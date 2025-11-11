@@ -1,0 +1,78 @@
+# Laravel
+*.log
+.env
+.phpunit.result.cache
+/.phpunit.cache
+/vendor
+/node_modules
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+
+# IDE and Editor
+.DS_Store
+.phpactor.json
+/.fleet
+/.idea
+/.nova
+/.vscode
+/.zed
+Thumbs.db
+
+# Homestead
+Homestead.json
+Homestead.yaml
+/auth.json
+TESTING_QUICK_START.md
+system.md
+SMS*.MD
+SETTINGS_SYSTEM_GUIDE.md
+nul
+# Deployment Files (server-specific)
+TEST_RESULTS_SUMMARY.md
+
+# Test and development files
+test-*.php
+test-*.html
+test_*.php
+test_*.html
+activate_user.php
+add-category-images.php
+check-admin-permissions.php
+check_provider.php
+check_user.php
+cleanup-dummy-images.php
+generate_token_for_user.php
+update-admin-role.php
+validate_token.php
+verify-admin.php
+start-server.bat
+
+# Vite build files
+vite.config.js.timestamp-*
+
+# Storage (except .gitignore files)
+/storage/app/*
+!/storage/app/.gitignore
+!/storage/app/public
+/storage/app/public/*
+!/storage/app/public/.gitignore
+/storage/framework/cache/*
+!/storage/framework/cache/.gitignore
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitignore
+/storage/framework/testing/*
+!/storage/framework/testing/.gitignore
+/storage/framework/views/*
+!/storage/framework/views/.gitignore
+/storage/logs/*
+!/storage/logs/.gitignore
+
+# Backup files
+*.bak
+*.backup
+*.sql
+*.sql.gz
+*.tar.gz

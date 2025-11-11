@@ -1,0 +1,284 @@
+@extends('layouts.vertical', ['title' => __('reviews.provider_reviews')])
+
+@section('content')
+<div class="container-fluid">
+    
+    <!-- Page Header -->
+    <div class="row">
+        <div class="col-12">
+            <div class="page-title-box">
+                <div class="page-title-right">
+                    <a href="{{ route('reviews.index') }}" class="btn btn-outline-primary">
+                        <i class="mdi mdi-arrow-left me-1"></i> {{ __('reviews.back_to_reviews') }}
+                    </a>
+                </div>
+                <h4 class="page-title">{{ __('reviews.provider_reviews') }}</h4>
+            </div>
+        </div>
+    </div>
+
+    <!-- Provider Info Card -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h4 class="mb-1">{{ $provider->business_name }}</h4>
+                            <p class="text-muted mb-2">
+                                <i class="mdi mdi-map-marker me-1"></i>
+                                {{ $provider->address ?? __('reviews.n_a') }}
+                            </p>
+                            <div class="d-flex gap-3">
+                                <span class="badge bg-info-subtle text-info">
+                                    {{ ucfirst(str_replace('_', ' ', $provider->business_type)) }}
+                                </span>
+                                <span class="badge bg-success-subtle text-success">
+                                    {{ ucfirst($provider->verification_status) }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="mb-2">
+                                <h2 class="mb-0">{{ $stats['avg_rating'] ?? 0 }} <small class="text-muted">/ 5.0</small></h2>
+                                <p class="text-muted mb-0">{{ __('reviews.avg_rating') }}</p>
+                            </div>
+                            <p class="text-muted mb-0">{{ $stats['total_reviews'] }} {{ __('reviews.total_reviews_count') }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row">
+        <div class="col-md-2">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="mdi mdi-star text-warning fs-2"></i>
+                    <h3 class="mt-2 mb-0">{{ $stats['rating_breakdown'][5] ?? 0 }}</h3>
+                    <p class="text-muted mb-0">{{ __('reviews.5_stars') }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="mdi mdi-star text-warning fs-2"></i>
+                    <h3 class="mt-2 mb-0">{{ $stats['rating_breakdown'][4] ?? 0 }}</h3>
+                    <p class="text-muted mb-0">{{ __('reviews.4_stars') }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="mdi mdi-star text-warning fs-2"></i>
+                    <h3 class="mt-2 mb-0">{{ $stats['rating_breakdown'][3] ?? 0 }}</h3>
+                    <p class="text-muted mb-0">{{ __('reviews.3_stars') }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="mdi mdi-star text-warning fs-2"></i>
+                    <h3 class="mt-2 mb-0">{{ $stats['rating_breakdown'][2] ?? 0 }}</h3>
+                    <p class="text-muted mb-0">{{ __('reviews.2_stars') }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="mdi mdi-star text-warning fs-2"></i>
+                    <h3 class="mt-2 mb-0">{{ $stats['rating_breakdown'][1] ?? 0 }}</h3>
+                    <p class="text-muted mb-0">{{ __('reviews.1_star') }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="mdi mdi-flag text-danger fs-2"></i>
+                    <h3 class="mt-2 mb-0">{{ $stats['flagged'] ?? 0 }}</h3>
+                    <p class="text-muted mb-0">{{ __('reviews.flagged') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reviews List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title mb-0">{{ __('reviews.customer_reviews') }}</h4>
+                </div>
+                <div class="card-body">
+                    @forelse($reviews as $review)
+                    <div class="review-item border-bottom pb-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex gap-3">
+                                <div class="avatar-sm bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center">
+                                    <span class="fw-bold">{{ strtoupper(substr($review->client->name ?? 'U', 0, 1)) }}</span>
+                                </div>
+                                <div>
+                                    <h5 class="mb-1">{{ $review->client->name ?? __('reviews.unknown') }}</h5>
+                                    <div class="mb-2">
+                                        @for($i = 1; $i <= 5; $i++)
+                                            @if($i <= $review->rating)
+                                                <i class="mdi mdi-star text-warning"></i>
+                                            @else
+                                                <i class="mdi mdi-star-outline text-muted"></i>
+                                            @endif
+                                        @endfor
+                                        <span class="text-muted ms-2">{{ $review->created_at->diffForHumans() }}</span>
+                                    </div>
+                                    <p class="text-muted mb-2">{{ $review->comment ?? __('reviews.no_comment_provided') }}</p>
+                                    
+                                    @if($review->booking)
+                                        <small class="text-muted">
+                                            <i class="mdi mdi-calendar me-1"></i>
+                                            {{ __('reviews.booking') }}: #{{ $review->booking->booking_number }}
+                                        </small>
+                                    @endif
+
+                                    @if($review->admin_response)
+                                        <div class="mt-3 p-3 bg-light rounded">
+                                            <strong class="text-primary">{{ __('reviews.admin_response') }}:</strong>
+                                            <p class="mb-0 mt-1">{{ $review->admin_response }}</p>
+                                            <small class="text-muted">{{ $review->responded_at->diffForHumans() }}</small>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                @if($review->is_flagged)
+                                    <span class="badge bg-danger">{{ __('reviews.flagged_badge') }}</span>
+                                @endif
+                                <button class="btn btn-sm btn-outline-warning toggle-flag" data-id="{{ $review->id }}" data-flagged="{{ $review->is_flagged ? 1 : 0 }}">
+                                    <i class="mdi mdi-flag"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary add-response" data-id="{{ $review->id }}" data-response="{{ $review->admin_response ?? '' }}">
+                                    <i class="mdi mdi-reply"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger delete-review" data-id="{{ $review->id }}">
+                                    <i class="mdi mdi-delete"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    @empty
+                    <div class="text-center py-5">
+                        <i class="mdi mdi-comment-remove-outline fs-1 text-muted"></i>
+                        <p class="text-muted mt-2">{{ __('reviews.no_reviews_yet') }}</p>
+                    </div>
+                    @endforelse
+
+                    <!-- Pagination -->
+                    @if($reviews->hasPages())
+                    <div class="mt-3">
+                        {{ $reviews->links() }}
+                    </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Response Modal -->
+<div class="modal fade" id="responseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ __('reviews.add_admin_response') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <textarea class="form-control" id="adminResponse" rows="4" placeholder="{{ __('reviews.enter_your_response') }}"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('reviews.cancel') }}</button>
+                <button type="button" class="btn btn-primary" id="saveResponse">{{ __('reviews.save_response') }}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@endsection
+
+@section('script')
+<script>
+    let currentReviewId = null;
+
+    // Toggle Flag
+    $('.toggle-flag').click(function() {
+        const reviewId = $(this).data('id');
+        const isFlagged = $(this).data('flagged');
+        
+        $.ajax({
+            url: `/reviews/${reviewId}/toggle-flag`,
+            method: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}'
+            },
+            success: function(response) {
+                if(response.success) {
+                    location.reload();
+                }
+            }
+        });
+    });
+
+    // Add Response
+    $('.add-response').click(function() {
+        currentReviewId = $(this).data('id');
+        const currentResponse = $(this).data('response');
+        $('#adminResponse').val(currentResponse);
+        $('#responseModal').modal('show');
+    });
+
+    $('#saveResponse').click(function() {
+        const response = $('#adminResponse').val();
+        
+        $.ajax({
+            url: `/reviews/${currentReviewId}/response`,
+            method: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                admin_response: response
+            },
+            success: function(res) {
+                if(res.success) {
+                    $('#responseModal').modal('hide');
+                    location.reload();
+                }
+            }
+        });
+    });
+
+    // Delete Review
+    $('.delete-review').click(function() {
+        if(!confirm('{{ __('reviews.delete_review_confirm') }}')) return;
+        
+        const reviewId = $(this).data('id');
+        
+        $.ajax({
+            url: `/reviews/${reviewId}`,
+            method: 'DELETE',
+            data: {
+                _token: '{{ csrf_token() }}'
+            },
+            success: function(response) {
+                if(response.success) {
+                    location.reload();
+                }
+            }
+        });
+    });
+</script>
+@endsection

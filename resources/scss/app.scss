@@ -1,0 +1,171 @@
+//
+// app.scss
+//
+
+// Core files
+@import "./node_modules/bootstrap/scss/functions";
+@import "./node_modules/bootstrap/scss/variables";
+@import "config/variables";
+@import "config/variables-dark";
+
+@import "config/variables-custom";
+@import "config/theme-mode";
+
+@import "./node_modules/bootstrap/scss/bootstrap";
+
+// Structure
+@import "structure/topbar";
+@import "structure/vertical";
+@import "structure/page-title";
+@import "structure/footer";
+
+// Bootstrap
+@import "components/accordion";
+@import "components/alerts";
+@import "components/avatar";
+@import "components/backgrounds";
+@import "components/badge";
+@import "components/breadcrumb";
+@import "components/buttons";
+@import "components/card";
+@import "components/docs";
+@import "components/dropdown";
+@import "components/forms";
+@import "components/helper";
+@import "components/list-group";
+@import "components/modal";
+@import "components/nav";
+@import "components/pagination";
+@import "components/popover";
+@import "components/print";
+@import "components/progress";
+@import "components/reboot";
+@import "components/switch";
+@import "components/tables";
+@import "components/type";
+@import "components/tooltip";
+@import "components/widgets";
+
+
+// Plugin
+@import "plugins/simplebar";
+@import "plugins/calendar";
+@import "plugins/choice";
+@import "plugins/dropzone";
+@import "plugins/editors";
+@import "plugins/gridjs";
+@import "plugins/apexcharts";
+@import "plugins/google-map";
+@import "plugins/vector-map";
+@import "plugins/dragula";
+@import "plugins/flatpicker";
+@import "plugins/swiper";
+@import "plugins/sweetalert";
+@import "plugins/prismjs";
+@import "plugins/range-slider";
+@import "plugins/toastify";
+
+
+// App Page
+@import "pages/app-chat";
+@import "pages/app-email";
+@import "pages/app-ecommerce";
+
+
+// Pages
+@import "pages/icon-demo";
+@import "pages/authentication";
+@import "pages/pricing";
+@import "pages/timeline";
+
+
+.luky-text {
+  color: #723069 !important;
+}
+.luky-btn{
+    background-color: #B57FBB !important;
+    border-color: #B57FBB !important;
+    color: white !important;
+}
+.luky-btn:hover{
+    background-color: #752B84 !important;
+    border-color: #752B84 !important;
+    cursor: pointer;    
+
+} 
+  .time-pill{
+    display:inline-block;
+    font-size:.75rem;
+    padding:.15rem .5rem;
+    border:1px solid #e9ecef;
+    background:#f8f9fa;
+    color:#6c757d;
+    border-radius:50rem;
+    margin-top:.15rem;
+  }
+
+  /* Chrome/Edge/Safari */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: rgba(0,0,0,.06);
+}
+*::-webkit-scrollbar-thumb {
+  background-color: var(--bs-primary);   /* bg-primary */
+  border-radius: 999px;
+  border: 2px solid transparent;         /* adds some spacing */
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--bs-primary) 85%, black 15%);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;                 /* auto | thin | none */
+  scrollbar-color: var(--bs-primary) rgba(0,0,0,.06);
+}
+
+
+// services category
+.service-category-height {
+  height: clamp(240px, calc(100vh - 680px), 70vh);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.category-height {
+  height: clamp(468px, calc(100vh - 680px), 70vh);
+  
+}
+.active-category {
+
+  background-color: rgba(var(--bs-primary-rgb), 0.1);
+  border-radius: var(--bs-border-radius);
+ padding-top: 0.8rem;
+ padding-bottom: 0.8rem;
+ 
+  box-shadow: var(--bs-box-shadow-lg);
+
+}
+
+.object-fit-cover { object-fit: cover; }
+
+.thumb-close {
+  width: 22px;
+  height: 22px;
+  line-height: 1;
+  font-size: 16px;
+}
+.badge:hover{
+  cursor: pointer;
+}
+
+.admin-chat-setting-height {
+    max-height: calc(100vh - 450px);
+}
+.admin-chatbox-height {
+    min-height: calc(100vh - 370px);
+    max-height: calc(100vh - 450px);
+}
