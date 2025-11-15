@@ -16,7 +16,7 @@
         </div>
     </div>
 
-    <form action="{{ route('services.store') }}" method="POST">
+    <form action="{{ route('services.store') }}" method="POST" enctype="multipart/form-data">
         @csrf
         <div class="row">
             <div class="col-xl-8">
@@ -182,6 +182,51 @@
                         </div>
                     </div>
                 </div>
+
+                {{-- Service Images --}}
+                <div class="card border shadow-sm">
+                    <div class="card-header bg-light border-bottom">
+                        <h5 class="card-title mb-0 fw-semibold">
+                            <i class="mdi mdi-image-multiple text-info me-2"></i>Service Images
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info border-info mb-3">
+                            <div class="d-flex align-items-center">
+                                <i class="mdi mdi-information fs-20 me-2"></i>
+                                <div>
+                                    <strong>Image Guidelines</strong>
+                                    <ul class="mb-0 mt-1 small ps-3">
+                                        <li>Upload up to 3 images</li>
+                                        <li>Supported formats: JPG, PNG</li>
+                                        <li>Max size: 5MB per image</li>
+                                        <li>Images will be shown to clients</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="service_images" class="form-label fw-semibold">
+                                <i class="mdi mdi-camera me-1"></i>Upload Service Images
+                            </label>
+                            <input type="file"
+                                   class="form-control @error('service_images') is-invalid @enderror"
+                                   id="service_images"
+                                   name="service_images[]"
+                                   accept="image/jpeg,image/png,image/jpg"
+                                   multiple
+                                   onchange="previewImages(this)">
+                            @error('service_images')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <small class="text-muted">You can select up to 3 images</small>
+                        </div>
+
+                        <!-- Image Preview -->
+                        <div id="image-preview" class="row g-2 mt-2"></div>
+                    </div>
+                </div>
             </div>
 
             <div class="col-xl-4">
@@ -278,6 +323,38 @@ function toggleHomeServicePrice() {
         container.style.display = 'none';
         input.required = false;
         input.value = '';
+    }
+}
+
+function previewImages(input) {
+    const preview = document.getElementById('image-preview');
+    preview.innerHTML = '';
+
+    if (input.files) {
+        const filesArray = Array.from(input.files).slice(0, 3); // Maximum 3 images
+
+        filesArray.forEach((file, index) => {
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                const col = document.createElement('div');
+                col.className = 'col-4';
+                col.innerHTML = `
+                    <div class="position-relative">
+                        <img src="${e.target.result}" class="img-thumbnail" style="width: 100%; height: 100px; object-fit: cover;">
+                        <span class="badge bg-primary position-absolute top-0 start-0 m-1">${index + 1}</span>
+                    </div>
+                `;
+                preview.appendChild(col);
+            };
+
+            reader.readAsDataURL(file);
+        });
+
+        // Show warning if more than 3 images selected
+        if (input.files.length > 3) {
+            alert('Maximum 3 images allowed. Only the first 3 will be uploaded.');
+        }
     }
 }
 </script>

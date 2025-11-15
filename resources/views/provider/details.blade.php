@@ -2,7 +2,6 @@
 
 @section('content')
 
-
     <!-- Chat Message Modal (clean layout) -->
     <div class="modal fade" id="providerChatMessage" tabindex="-1" aria-labelledby="providerChatMessageLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-md">
@@ -274,31 +273,32 @@
         <div class="card">
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-lg-2 text-lg-center">
-                        <div class="bg-body d-flex align-items-center justify-content-center rounded py-4">
-                            <img src="{{ $provider['logo_url'] ?? $provider['avatar_url'] ?? '/images/default-avatar.png' }}" alt="{{ $provider['business_name'] ?? __('common.na') }}" class="avatar-xxl flex-shrink-0 rounded object-fit-cover ">
+                    <!-- Left: Logo and Actions -->
+                    <div class="col-lg-auto text-center">
+                        <div class="position-relative d-inline-block">
+                            <img src="{{ $provider['logo_url'] ?? '/images/default-avatar.png' }}"
+                                 alt="{{ $provider['business_name'] ?? __('common.na') }}"
+                                 class="rounded"
+                                 style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #f5f5f5;">
                         </div>
-
-                        <div class="mt-3 gap-1 hstack">
+                        <div class="mt-3 gap-2 d-flex justify-content-center">
                             <a href="#!" data-bs-toggle="modal" data-bs-target="#providerChatMessage"
-                                class="btn btn-soft-dark d-inline-flex align-items-center justify-content-center rounded avatar-sm" title="{{ __('providers.send_message') }}">
-                                <i class='bx bx-message fs-18'></i>
+                                class="btn btn-soft-dark btn-sm" title="{{ __('providers.send_message') }}">
+                                <i class='bx bx-message me-1'></i>{{ __('providers.message') }}
                             </a>
                             <a href="#!" data-bs-toggle="modal" data-bs-target="#providerNotificationModal"
-                                class="btn btn-soft-warning d-inline-flex align-items-center justify-content-center rounded avatar-sm" title="{{ __('providers.send_notification') }}">
-                                <i class='bx bx-bell fs-18'></i>
+                                class="btn btn-soft-warning btn-sm" title="{{ __('providers.send_notification') }}">
+                                <i class='bx bx-bell me-1'></i>{{ __('providers.notify') }}
                             </a>
                         </div>
                     </div>
-                    <div class="col-lg-3 border-end">
-                        <div class="">
+
+                    <!-- Middle: Business Info -->
+                    <div class="col-lg border-end">
+                        <div class="h-100 d-flex flex-column justify-content-center">
                             <h4 class="mb-1">{{ $provider['business_name'] ?? __('common.na') }}</h4>
-                            <p class="mb-1">({{ $provider['business_type'] ?? __('common.na') }})</p>
-                            @if(!empty($provider['website']))
-                            <a href="{{ $provider['website'] }}" class="link-primary fs-16 fw-medium" target="_blank">{{ $provider['website'] }}</a>
-                            @else
-                            <span class="text-muted">{{ __('common.na') }}</span>
-                            @endif
+                            <p class="text-muted mb-2"><i class="bx bx-store-alt me-1"></i>{{ $provider['business_type'] ?? __('common.na') }}</p>
+
                             @php
                                 $rating = floatval($provider['rating'] ?? 0);
                                 $fullStars = floor($rating);
@@ -306,51 +306,65 @@
                                 $emptyStars = 5 - $fullStars - ($hasHalfStar ? 1 : 0);
                                 $reviewCount = $provider['total_reviews'] ?? 0;
                             @endphp
-                            <div class="d-flex align-items-center justify-content-satrt gap-2 mt-2 mb-1">
-                                <ul class="d-flex text-warning m-0 fs-20 list-unstyled">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <ul class="d-flex text-warning m-0 fs-18 list-unstyled">
                                     @for($i = 0; $i < $fullStars; $i++)
-                                    <li>
-                                        <i class="bx bxs-star"></i>
-                                    </li>
+                                    <li><i class="bx bxs-star"></i></li>
                                     @endfor
                                     @if($hasHalfStar)
-                                    <li>
-                                        <i class="bx bxs-star-half"></i>
-                                    </li>
+                                    <li><i class="bx bxs-star-half"></i></li>
                                     @endif
                                     @for($i = 0; $i < $emptyStars; $i++)
-                                    <li>
-                                        <i class="bx bxs-star"></i>
-                                    </li>
+                                    <li><i class="bx bx-star"></i></li>
                                     @endfor
                                 </ul>
-                                <p class="fw-medium mb-0 text-dark fs-15">{{ number_format($rating, 1) }}/5 <span class="fs-13">({{ number_format($reviewCount) }} {{ $reviewCount == 1 ? __('providers.review') : __('providers.reviews') }})</span></p>
+                                <span class="fw-medium text-dark">{{ number_format($rating, 1) }}</span>
+                                <span class="text-muted">({{ number_format($reviewCount) }} {{ $reviewCount == 1 ? __('providers.review') : __('providers.reviews') }})</span>
                             </div>
-                            <div class="mt-2">
-                                <div class="d-flex align-items-center gap-2 mb-2">
-                                    <div class="avatar-sm bg-light d-flex align-items-center justify-content-center rounded">
-                                        <iconify-icon icon="solar:point-on-map-bold-duotone" class="fs-20 text-primary"></iconify-icon>
+
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <div class="d-flex align-items-start gap-2">
+                                        <i class="bx bx-map text-primary fs-18 mt-1"></i>
+                                        <span class="text-muted small">{{ $provider['address'] ?? __('common.na') }}, {{ app()->getLocale() === 'ar' ? ($provider['city']['name_ar'] ?? $provider['city']['name_en'] ?? '') : ($provider['city']['name_en'] ?? $provider['city']['name_ar'] ?? '') }}</span>
                                     </div>
-                                    <p class="mb-0 fs-15">{{ $provider['address'] ?? __('common.na') }}, {{ app()->getLocale() === 'ar' ? ($provider['city']['name_ar'] ?? $provider['city']['name_en'] ?? '') : ($provider['city']['name_en'] ?? $provider['city']['name_ar'] ?? '') }}</p>
                                 </div>
-                                <div class="d-flex align-items-center gap-2 mb-2">
-                                    <div class="avatar-sm bg-light d-flex align-items-center justify-content-center rounded">
-                                        <iconify-icon icon="solar:letter-bold-duotone" class="fs-20 text-primary"></iconify-icon>
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bx bx-envelope text-primary fs-18"></i>
+                                        <span class="text-muted small">{{ $provider['email'] ?? __('common.na') }}</span>
                                     </div>
-                                    <p class="mb-0 fs-15">{{ $provider['email'] ?? __('common.na') }}</p>
                                 </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <div class="avatar-sm bg-light d-flex align-items-center justify-content-center rounded">
-                                        <iconify-icon icon="solar:outgoing-call-rounded-bold-duotone" class="fs-20 text-primary"></iconify-icon>
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bx bx-phone text-primary fs-18"></i>
+                                        <span class="text-muted small">{{ $provider['phone'] ?? __('common.na') }}</span>
                                     </div>
-                                    <p class="mb-0 fs-15">{{ $provider['phone'] ?? __('common.na') }}</p>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-lg-7    service-category-height overflow-auto">
-<div class="ps-lg-4">
-                            <h4 class="card-title">{{ __('providers.profit_by_category') }}</h4>
+
+                    <!-- Right: Building Image & Revenue -->
+                    <div class="col-lg-auto">
+                        @if(!empty($provider['building_image_url']))
+                        <div class="mb-3">
+                            <img src="{{ $provider['building_image_url'] }}"
+                                 alt="{{ __('providers.building_image') }}"
+                                 class="rounded"
+                                 style="width: 200px; height: 150px; object-fit: cover;">
+                            <p class="text-muted small text-center mt-1 mb-0">{{ __('providers.building_image') }}</p>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+
+                <hr class="my-3">
+
+                <!-- Revenue by Category -->
+                <div class="row g-3">
+                    <div class="col-12">
+                        <h5 class="card-title mb-3">{{ __('providers.profit_by_category') }}</h5>
                             @if(!empty($revenue['categories']) && is_array($revenue['categories']))
                                 @foreach($revenue['categories'] as $category)
                             <div class="d-flex align-items-center justify-content-between mt-3 mb-1">
@@ -366,14 +380,10 @@
                             @else
                             <p class="text-muted">{{ __('providers.no_category_data') }}</p>
                             @endif
-                           
-                            
-
-                           
-                        </div>
                     </div>
                 </div>
-                <hr class="my-4">
+
+                <hr class="my-3">
 
                 <div class="row text-center g-2 mt-2">
                     <div class="col-lg-3 col-4" data-bs-theme="dark">

@@ -20,10 +20,35 @@
                             @csrf
                             @method('PUT')
 
+                            <!-- Page Type Indicator -->
+                            <div class="mb-3">
+                                <label class="form-label">{{ __('common.page_type') }}</label>
+                                <div class="form-control-plaintext">
+                                    @php
+                                        $systemPages = [
+                                            'about-us' => 'About Us / من نحن',
+                                            'terms-and-conditions' => 'Terms & Conditions / الشروط والأحكام',
+                                            'faq' => 'FAQs / الأسئلة الشائعة',
+                                            'privacy-policy' => 'Privacy Policy / سياسة الخصوصية'
+                                        ];
+                                    @endphp
+                                    @if(isset($systemPages[$page->slug]))
+                                        <span class="badge bg-label-primary">
+                                            <i class="bx bx-lock-alt me-1"></i>{{ $systemPages[$page->slug] }}
+                                        </span>
+                                    @else
+                                        <span class="badge bg-label-secondary">
+                                            <i class="bx bx-file me-1"></i>{{ __('common.custom_page') }}
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+
                             <!-- System Page Notice -->
                             @if(in_array($page->slug, ['terms-and-conditions', 'privacy-policy', 'about-us', 'faq']))
-                                <div class="alert alert-info mb-3">
-                                    <i class="bx bx-info-circle me-2"></i>{{ __('common.system_page_notice') }}
+                                <div class="alert alert-warning mb-3">
+                                    <i class="bx bx-info-circle me-2"></i>
+                                    <strong>{{ __('common.system_page') }}:</strong> {{ __('common.system_page_notice') }}
                                 </div>
                             @endif
 

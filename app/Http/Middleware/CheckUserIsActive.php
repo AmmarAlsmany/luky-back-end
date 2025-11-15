@@ -18,26 +18,26 @@ class CheckUserIsActive
     {
         if (Auth::check()) {
             $user = Auth::user();
-            
+
             // Check both is_active flag and status field
             if (!$user->is_active || $user->status !== 'active') {
                 // User is logged in but not active
-                Auth::logout();
-                
-                $statusMessage = !$user->is_active 
+                $statusMessage = !$user->is_active
                     ? 'Your account is inactive. Please contact support.'
                     : 'Your account has been ' . $user->status . '. Please contact support.';
-                
+
                 if ($request->expectsJson() || $request->is('api/*')) {
                     // For API requests, return JSON response
+                    // Token revocation is handled by the client when it receives this response
                     return response()->json([
                         'success' => false,
                         'message' => $statusMessage,
                         'error_code' => 'account_inactive'
                     ], 403);
                 }
-                
-                // For web requests, redirect to login with error message
+
+                // For web requests, logout session and redirect to login with error message
+                Auth::logout();
                 return redirect()->route('login')
                     ->with('error', $statusMessage);
             }

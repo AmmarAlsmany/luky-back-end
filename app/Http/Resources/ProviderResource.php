@@ -71,13 +71,11 @@ class ProviderResource extends JsonResource
                 });
             }),
             'services_count' => $this->services()->count(),
-            
-            // Media
-            'logo_url' => $this->getFirstMediaUrl('logo'),
-            'gallery' => $this->getMedia('gallery')->map(function ($media) {
-                return $media->getUrl();
-            }),
-            
+
+            // Media - Use model accessors for proper default handling
+            'logo_url' => $this->logo_url,
+            'building_image_url' => $this->building_image_url,
+
             // Verification
             'verification_status' => $this->verification_status,
             'verified_at' => $this->verified_at?->format('Y-m-d H:i:s'),
@@ -122,9 +120,12 @@ class ProviderResource extends JsonResource
         // Check working hours for today
         if (isset($this->working_hours[$currentDay])) {
             $hours = $this->working_hours[$currentDay];
-            return $currentTime >= $hours['start'] && $currentTime <= $hours['end'];
+            // Check if start and end times are set
+            if (isset($hours['start']) && isset($hours['end'])) {
+                return $currentTime >= $hours['start'] && $currentTime <= $hours['end'];
+            }
         }
-        
+
         return false;
     }
 }

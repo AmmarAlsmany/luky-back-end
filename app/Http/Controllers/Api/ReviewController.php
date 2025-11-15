@@ -38,10 +38,10 @@ class ReviewController extends Controller
             ]);
         }
 
-        // Check if booking was completed at least 1 hour ago (as per contract requirement)
-        if ($booking->completed_at && $booking->completed_at->gt(now()->subHour())) {
+        // Check if booking was completed at least 5 minutes ago (as per contract requirement)
+        if ($booking->completed_at && $booking->completed_at->gt(now()->subMinutes(5))) {
             throw ValidationException::withMessages([
-                'booking' => ['You can review this booking 1 hour after completion.']
+                'booking' => ['You can review this booking 5 minutes after completion.']
             ]);
         }
 

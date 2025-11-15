@@ -502,6 +502,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (convId) {
                 currentConversationId = convId;
                 await loadConversation(convId);
+                // Start auto-refresh
+                startAutoRefresh(convId);
             } else {
                 // Create new conversation
                 const providerId = this.dataset.providerId;
@@ -533,6 +535,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Load the new conversation
                         currentConversationId = data.conversation.id;
                         await loadConversation(data.conversation.id);
+                        // Start auto-refresh
+                        startAutoRefresh(data.conversation.id);
                     } else {
                         chatList.innerHTML = '<div class="text-center py-5"><p class="text-danger">{{ __('chat.failed_create_conversation') }}</p></div>';
                     }
@@ -558,6 +562,30 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error('Error loading conversation:', error);
             alert('{{ __('chat.failed_load_conversation') }}');
+        }
+    }
+    
+    // Auto-refresh messages every 5 seconds when conversation is open
+    let autoRefreshInterval = null;
+    
+    function startAutoRefresh(conversationId) {
+        // Clear any existing interval
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+        }
+        
+        // Refresh every 5 seconds
+        autoRefreshInterval = setInterval(async () => {
+            if (currentConversationId) {
+                await loadConversation(currentConversationId);
+            }
+        }, 5000);
+    }
+    
+    function stopAutoRefresh() {
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = null;
         }
     }
     

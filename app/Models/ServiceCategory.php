@@ -37,5 +37,30 @@ class ServiceCategory extends Model
     {
         return $query->where('is_active', true)->orderBy('sort_order');
     }
+
+    /**
+     * Get business type from category name
+     * Maps category to business_type for backward compatibility
+     */
+    public function getBusinessType()
+    {
+        $mapping = [
+            'salon' => 'salon',
+            'clinic' => 'clinic',
+            'makeup artist' => 'makeup_artist',
+            'hair stylist' => 'hair_stylist',
+        ];
+
+        $categoryName = strtolower($this->name_en ?? '');
+
+        foreach ($mapping as $key => $value) {
+            if (str_contains($categoryName, $key)) {
+                return $value;
+            }
+        }
+
+        // Default to salon if no match
+        return 'salon';
+    }
 }
 

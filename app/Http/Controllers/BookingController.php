@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\User;
 use App\Models\Service;
 use App\Models\ServiceProvider;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -306,7 +307,7 @@ class BookingController extends Controller
     /**
      * Update booking status
      */
-    public function updateStatus(Request $request, $id)
+    public function updateStatus(Request $request, $id, NotificationService $notificationService)
     {
         $validated = $request->validate([
             'status' => 'required|in:pending,confirmed,completed,cancelled,rejected',
@@ -314,7 +315,7 @@ class BookingController extends Controller
             'cancelled_by' => 'nullable|in:client,provider,admin',
         ]);
 
-        $booking = Booking::findOrFail($id);
+        $booking = Booking::with(['provider', 'client'])->findOrFail($id);
 
         DB::beginTransaction();
         try {
@@ -338,22 +339,23 @@ class BookingController extends Controller
 
             $booking->update($updateData);
 
-            // Send notification to client
-            \App\Models\Notification::create([
-                'user_id' => $booking->client_id,
-                'type' => 'booking_status',
-                'title' => 'Booking Status Updated',
-                'body' => "Your booking #{$booking->booking_number} status has been updated to: " . ucfirst($validated['status']),
-                'data' => [
-                    'booking_id' => $booking->id,
-                    'status' => $validated['status'],
-                    'updated_at' => now()->toISOString(),
-                ],
-                'is_read' => false,
-                'is_sent' => true,
-            ]);
-
             DB::commit();
+
+            // Send appropriate notification based on status
+            switch ($validated['status']) {
+                case 'confirmed':
+                    $notificationService->sendBookingAccepted($booking);
+                    break;
+                case 'rejected':
+                    $notificationService->sendBookingRejected($booking);
+                    break;
+                case 'cancelled':
+                    $notificationService->sendBookingCancelled($booking, 'client');
+                    break;
+                case 'completed':
+                    $notificationService->sendBookingCompleted($booking);
+                    break;
+            }
 
             if ($request->expectsJson()) {
                 return response()->json([

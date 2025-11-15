@@ -144,6 +144,10 @@ class ServiceProvider extends Model implements HasMedia
         $this->addMediaCollection('logo')
             ->singleFile()
             ->acceptsMimeTypes(['image/jpeg', 'image/png']);
+
+        $this->addMediaCollection('building_image')
+            ->singleFile()
+            ->acceptsMimeTypes(['image/jpeg', 'image/png']);
     }
 
     /**
@@ -159,5 +163,18 @@ class ServiceProvider extends Model implements HasMedia
 
         // Use default business avatar
         return asset('images/default-business.svg');
+    }
+
+    /**
+     * Get building image URL
+     */
+    public function getBuildingImageUrlAttribute()
+    {
+        $buildingImage = $this->getFirstMedia('building_image');
+        if ($buildingImage) {
+            return $buildingImage->getUrl();
+        }
+
+        return null;
     }
 }

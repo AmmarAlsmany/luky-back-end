@@ -69,7 +69,24 @@ class FCMService
         try {
             $message = CloudMessage::new()
                 ->withNotification(Notification::create($title, $body))
-                ->withData($data);
+                ->withData($data)
+                ->withAndroidConfig([
+                    'priority' => 'high',
+                    'notification' => [
+                        'channel_id' => 'booking_notifications',
+                        'sound' => 'default',
+                        'priority' => 'high',
+                        'default_vibrate_timings' => true,
+                    ],
+                ])
+                ->withApnsConfig([
+                    'payload' => [
+                        'aps' => [
+                            'sound' => 'default',
+                            'badge' => 1,
+                        ],
+                    ],
+                ]);
 
             $report = $this->messaging->sendMulticast($message, $tokens);
 

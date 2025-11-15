@@ -32,8 +32,8 @@ class StaticPagesController extends Controller
         }
 
         // Status filter
-        if ($status) {
-            $query->where('status', $status);
+        if ($status !== null) {
+            $query->where('is_published', $status === 'published' || $status === '1' || $status === 1);
         }
 
         // Sorting
@@ -74,7 +74,7 @@ class StaticPagesController extends Controller
     {
         $page = DB::table('static_pages')
             ->where('slug', $slug)
-            ->where('status', 'published')
+            ->where('is_published', true)
             ->first();
 
         if (!$page) {
@@ -86,7 +86,7 @@ class StaticPagesController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => ['page' => $page],
+            'data' => $page,
         ]);
     }
 

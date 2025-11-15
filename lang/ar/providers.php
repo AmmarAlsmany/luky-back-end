@@ -57,6 +57,7 @@ return [
     'basic_information' => 'المعلومات الأساسية',
     'business_info' => 'معلومات النشاط',
     'select_type' => 'اختر النوع',
+    'select_category' => 'اختر الفئة',
     'select_city' => 'اختر المدينة',
     'business_structure' => 'هيكل النشاط',
     'service_category' => 'فئة الخدمة',
@@ -83,6 +84,7 @@ return [
     'special_off_days' => 'أيام العطل الخاصة (اختياري)',
     'add_holidays' => 'إضافة عطلات / إجازات خاصة',
     'select_date' => 'اختر التاريخ',
+    'category' => 'الفئة',
     'off_days_hint' => 'أضف التواريخ التي لن يكون فيها مقدم الخدمة متاحًا (عطلات، إجازات، إلخ)',
     'create_provider' => 'إنشاء مقدم خدمة',
     'phone_otp_hint' => 'سيستخدم مقدم الخدمة هذا الرقم لتسجيل الدخول عبر OTP',
@@ -109,6 +111,7 @@ return [
     'your_message' => 'رسالتك',
     'press_enter' => 'اضغط <kbd>Enter</kbd> للإرسال • <kbd>Shift</kbd>+<kbd>Enter</kbd> لسطر جديد',
     'send' => 'إرسال',
+    'notify' => 'إشعار',
     'send_notification' => 'إرسال إشعار لمقدم الخدمة',
     'title' => 'العنوان',
     'message' => 'الرسالة',
@@ -258,4 +261,10 @@ return [
     'national_id' => 'الهوية الوطنية',
     'agreement_contract' => 'عقد الاتفاقية',
     'file_format_hint' => 'الصيغ المقبولة: PDF، JPG، PNG (بحد أقصى: 5 ميجابايت)',
+    
+    // Provider Images
+    'logo' => 'شعار النشاط التجاري',
+    'logo_hint' => 'ارفع شعار نشاطك التجاري (JPG, PNG - بحد أقصى 2 ميجابايت)',
+    'building_image' => 'صورة المبنى/الموقع',
+    'building_image_hint' => 'ارفع صورة لمبناك من الخارج (JPG, PNG - بحد أقصى 5 ميجابايت)',
 ];

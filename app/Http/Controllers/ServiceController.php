@@ -76,13 +76,18 @@ class ServiceController extends Controller
                 'name_en' => $service->name_en,
                 'name_ar' => $service->name_ar,
                 'description' => $service->description_en ?? $service->description,
+                'description_ar' => $service->description_ar,
+                'description_en' => $service->description_en,
                 'price' => $service->price,
+                'home_service_price' => $service->home_service_price,
                 'duration' => $service->duration_minutes,
                 'duration_minutes' => $service->duration_minutes,
                 'is_active' => $service->is_active,
                 'available_at_home' => $service->available_at_home,
                 'home_service_available' => $service->available_at_home,
                 'center_service_available' => !$service->available_at_home || $service->available_at_home === false,
+                'image' => $service->image_url,
+                'images' => $service->images,
                 'category' => $service->category ? [
                     'id' => $service->category->id,
                     'name' => app()->getLocale() === 'ar' ? $service->category->name_ar : $service->category->name_en,
@@ -183,6 +188,7 @@ class ServiceController extends Controller
             'is_active' => 'nullable|boolean',
             'is_featured' => 'nullable|boolean',
             'sort_order' => 'nullable|integer',
+            'service_images.*' => 'nullable|image|mimes:jpeg,jpg,png|max:5120', // 5MB max per image
         ]);
 
         // Set default name if bilingual not provided
@@ -194,8 +200,16 @@ class ServiceController extends Controller
 
         $service = Service::create($validated);
 
+        // Handle service images upload (maximum 3 images)
+        if ($request->hasFile('service_images')) {
+            $images = array_slice($request->file('service_images'), 0, 3); // Take only first 3
+            foreach ($images as $image) {
+                $service->addMedia($image)->toMediaCollection('service_images');
+            }
+        }
+
         return redirect()->route('services.index')
-            ->with('success', 'Service created successfully');
+            ->with('success', 'Service created successfully with ' . $service->getMedia('service_images')->count() . ' image(s)');
     }
 
     /**
@@ -247,6 +261,7 @@ class ServiceController extends Controller
             'is_active' => 'nullable|boolean',
             'is_featured' => 'nullable|boolean',
             'sort_order' => 'nullable|integer',
+            'service_images.*' => 'nullable|image|mimes:jpeg,jpg,png|max:5120', // 5MB max per image
         ]);
 
         // Update default name
@@ -258,8 +273,22 @@ class ServiceController extends Controller
 
         $service->update($validated);
 
+        // Handle service images upload (respect maximum 3 images total)
+        if ($request->hasFile('service_images')) {
+            $currentCount = $service->getMedia('service_images')->count();
+            $maxNew = 3 - $currentCount;
+
+            if ($maxNew > 0) {
+                $images = array_slice($request->file('service_images'), 0, $maxNew);
+                foreach ($images as $image) {
+                    $service->addMedia($image)->toMediaCollection('service_images');
+                }
+            }
+        }
+
+        $imageCount = $service->getMedia('service_images')->count();
         return redirect()->route('services.index')
-            ->with('success', 'Service updated successfully');
+            ->with('success', 'Service updated successfully with ' . $imageCount . ' image(s)');
     }
 
     /**

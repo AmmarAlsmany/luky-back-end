@@ -316,27 +316,59 @@ class CustomerServiceController extends Controller
         $conversation = AdminConversation::where('admin_id', auth()->id())
             ->findOrFail($id);
 
-        $message = AdminMessage::create([
-            'conversation_id' => $conversation->id,
-            'sender_id' => auth()->id(),
-            'sender_type' => 'admin',
-            'message_type' => 'text',
-            'content' => $validated['message'],
-            'is_read' => false,
-        ]);
+        DB::beginTransaction();
+        try {
+            $message = AdminMessage::create([
+                'conversation_id' => $conversation->id,
+                'sender_id' => auth()->id(),
+                'sender_type' => 'admin',
+                'message_type' => 'text',
+                'content' => $validated['message'],
+                'is_read' => false,
+            ]);
 
-        // Update conversation
-        $conversation->update([
-            'last_message_id' => $message->id,
-            'last_message_at' => now(),
-            'user_unread_count' => DB::raw('user_unread_count + 1'),
-        ]);
+            // Update conversation
+            $conversation->update([
+                'last_message_id' => $message->id,
+                'last_message_at' => now(),
+                'user_unread_count' => DB::raw('user_unread_count + 1'),
+            ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Message sent successfully',
-            'data' => $message->load('sender'),
-        ]);
+            // Send notification to client/provider
+            \App\Models\Notification::create([
+                'user_id' => $conversation->user_id,
+                'type' => 'admin_message',
+                'title' => 'Message from Admin',
+                'body' => $validated['message'],
+                'data' => [
+                    'sender_id' => auth()->id(),
+                    'sender_name' => auth()->user()->name,
+                    'conversation_id' => $conversation->id,
+                    'notification_type' => 'admin_message',
+                ],
+                'is_read' => false,
+                'is_sent' => true,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Message sent successfully',
+                'data' => $message->load('sender'),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Failed to send conversation message', [
+                'conversation_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send message',
+            ], 500);
+        }
     }
 
     /**

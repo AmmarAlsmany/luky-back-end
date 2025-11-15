@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Notification;
 use App\Models\DeviceToken;
+use App\Models\AdminConversation;
+use App\Models\AdminMessage;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class NotificationController extends Controller
 {
@@ -299,5 +302,206 @@ class NotificationController extends Controller
                 ];
             })
         ]);
+    }
+
+    /**
+     * Send message to admin
+     */
+    public function sendMessageToAdmin(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'message' => 'required|string|max:1000',
+        ]);
+
+        $user = $request->user();
+        $userType = $user->hasRole('client') ? 'client' : 'provider';
+
+        DB::beginTransaction();
+        try {
+            // Get all users who have permission to view/manage admin conversations
+            // This is determined by the admin panel's role and permission system
+            // We look for users with ANY permission related to viewing customer service
+            $adminUsers = \App\Models\User::whereHas('permissions', function($q) {
+                $q->where('name', 'like', '%customer%')
+                  ->orWhere('name', 'like', '%support%')
+                  ->orWhere('name', 'like', '%chat%');
+            })->orWhereHas('roles', function($q) {
+                // Also include any user with admin-related roles
+                $q->where('name', 'like', '%admin%')
+                  ->orWhere('name', 'like', '%support%');
+            })->get();
+
+            // If no users found with specific permissions, fall back to any admin-like role
+            if ($adminUsers->isEmpty()) {
+                $adminUsers = \App\Models\User::whereHas('roles')->get();
+            }
+
+            // If still no users, use first user as fallback
+            if ($adminUsers->isEmpty()) {
+                $firstUser = \App\Models\User::orderBy('id', 'asc')->first();
+                if ($firstUser && $firstUser->id !== $user->id) {
+                    $adminUsers = collect([$firstUser]);
+                }
+            }
+
+            foreach ($adminUsers as $admin) {
+                // Create notification
+                Notification::create([
+                    'user_id' => $admin->id,
+                    'type' => 'client_message',
+                    'title' => 'Message from ' . $user->name,
+                    'body' => $validated['message'],
+                    'data' => [
+                        'sender_id' => $user->id,
+                        'sender_name' => $user->name,
+                        'sender_phone' => $user->phone,
+                        'notification_type' => 'client_message',
+                    ],
+                    'is_read' => false,
+                    'is_sent' => false,
+                ]);
+
+                // Create or get admin conversation
+                $conversation = AdminConversation::firstOrCreate([
+                    'admin_id' => $admin->id,
+                    'user_id' => $user->id,
+                    'user_type' => $userType,
+                ], [
+                    'last_message_at' => now(),
+                ]);
+
+                // Create admin message
+                $adminMessage = AdminMessage::create([
+                    'conversation_id' => $conversation->id,
+                    'sender_id' => $user->id,
+                    'sender_type' => $userType,
+                    'message_type' => 'text',
+                    'content' => $validated['message'],
+                    'is_read' => false,
+                ]);
+
+                // Update conversation with last message
+                $conversation->update([
+                    'last_message_id' => $adminMessage->id,
+                    'last_message_at' => now(),
+                    'admin_unread_count' => DB::raw('admin_unread_count + 1'),
+                ]);
+            }
+
+            // Also create a copy for the user as sent message
+            Notification::create([
+                'user_id' => $user->id,
+                'type' => 'admin_message',
+                'title' => 'Message to Admin',
+                'body' => $validated['message'],
+                'data' => [
+                    'is_from_user' => true,
+                    'notification_type' => 'sent_to_admin',
+                ],
+                'is_read' => true, // Mark as read since it's the user's own message
+                'is_sent' => true,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Message sent to admin successfully',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error sending message to admin', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send message to admin',
+            ], 500);
+        }
+    }
+
+    /**
+     * Get admin conversation messages for client/provider
+     */
+    public function getAdminMessages(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $userType = $user->hasRole('client') ? 'client' : 'provider';
+
+        try {
+            // Find any admin conversation for this user
+            $conversation = AdminConversation::where('user_id', $user->id)
+                ->where('user_type', $userType)
+                ->with(['admin'])
+                ->first();
+
+            if (!$conversation) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'conversation' => null,
+                        'messages' => [],
+                        'has_conversation' => false
+                    ]
+                ]);
+            }
+
+            // Get messages
+            $messages = AdminMessage::where('conversation_id', $conversation->id)
+                ->with('sender')
+                ->orderBy('created_at', 'asc')
+                ->get()
+                ->map(function ($message) {
+                    return [
+                        'id' => $message->id,
+                        'content' => $message->content,
+                        'sender_id' => $message->sender_id,
+                        'sender_name' => $message->sender->name,
+                        'sender_type' => $message->sender_type,
+                        'message_type' => $message->message_type,
+                        'is_read' => $message->is_read,
+                        'created_at' => $message->created_at->format('Y-m-d H:i:s'),
+                    ];
+                });
+
+            // Mark messages from admin as read
+            AdminMessage::where('conversation_id', $conversation->id)
+                ->where('sender_type', 'admin')
+                ->where('is_read', false)
+                ->update([
+                    'is_read' => true,
+                    'read_at' => now()
+                ]);
+
+            // Update user unread count
+            $conversation->update(['user_unread_count' => 0]);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'conversation' => [
+                        'id' => $conversation->id,
+                        'admin_name' => $conversation->admin->name,
+                        'last_message_at' => $conversation->last_message_at?->format('Y-m-d H:i:s'),
+                        'unread_count' => 0,
+                    ],
+                    'messages' => $messages,
+                    'has_conversation' => true
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error getting admin messages', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get messages',
+            ], 500);
+        }
     }
 }

@@ -50,8 +50,8 @@
                             <tr>
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        <img src="{{ $provider['avatar_url'] ?? '/images/default-avatar.png' }}"
-                                             class="avatar-sm rounded-circle me-2"
+                                        <img src="{{ $provider['providerProfile']->logo_url ?? '/images/default-business.svg' }}"
+                                             class="avatar-sm rounded-circle me-2 object-fit-cover"
                                              alt="{{ $provider['business_name'] ?? 'Provider' }}">
                                         <div>
                                             <span class="fw-semibold">{{ $provider['business_name'] ?? $provider['name'] ?? __('providers.n_a') }}</span>

@@ -184,29 +184,47 @@
                                             </p>
                                         </div>
 
-                                        @if(!empty($service['description']))
+                                        @if(!empty($service['description']) || !empty($service['description_ar'] ?? null))
                                             <p class="card-text text-muted fs-13 mb-3">
-                                                {{ Str::limit($service['description'], 70) }}
+                                                @if(!empty($service['description_ar'] ?? null))
+                                                    <span class="d-block mb-1" dir="rtl">{{ Str::limit($service['description_ar'], 70) }}</span>
+                                                @endif
+                                                @if(!empty($service['description']) && ($service['description'] !== ($service['description_ar'] ?? null)))
+                                                    <span class="d-block">{{ Str::limit($service['description'], 70) }}</span>
+                                                @endif
                                             </p>
                                         @endif
 
-                                        <div class="row g-3 mb-3">
+                                        <div class="row g-2 mb-3">
                                             <div class="col-6">
                                                 <div class="p-2 bg-light rounded text-center">
-                                                    <small class="text-muted d-block mb-1">Price</small>
-                                                    <span class="fw-bold text-primary fs-15">
+                                                    <small class="text-muted d-block mb-1">Center Price</small>
+                                                    <span class="fw-bold text-primary fs-14">
                                                         {{ number_format($service['price'], 2) }} SAR
                                                     </span>
                                                 </div>
                                             </div>
+                                            @if(!empty($service['available_at_home']) && !empty($service['home_service_price']))
+                                            <div class="col-6">
+                                                <div class="p-2 bg-success-subtle rounded text-center">
+                                                    <small class="text-success d-block mb-1">
+                                                        <i class="mdi mdi-home me-1"></i>Home Price
+                                                    </small>
+                                                    <span class="fw-bold text-success fs-14">
+                                                        {{ number_format($service['home_service_price'], 2) }} SAR
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            @else
                                             <div class="col-6">
                                                 <div class="p-2 bg-light rounded text-center">
                                                     <small class="text-muted d-block mb-1">Duration</small>
-                                                    <span class="fw-bold text-dark fs-15">
+                                                    <span class="fw-bold text-dark fs-14">
                                                         <i class="mdi mdi-clock-outline me-1"></i>{{ $service['duration_minutes'] ?? $service['duration'] ?? 'N/A' }} min
                                                     </span>
                                                 </div>
                                             </div>
+                                            @endif
                                         </div>
 
                                         @if(!empty($service['provider']))

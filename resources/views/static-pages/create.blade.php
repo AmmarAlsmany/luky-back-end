@@ -19,10 +19,23 @@
                         <form action="{{ route('static-pages.store') }}" method="POST" id="staticPageForm" onsubmit="return syncQuillContent();">
                             @csrf
 
+                            <!-- Page Type (Predefined or Custom) -->
+                            <div class="mb-3">
+                                <label for="page_type" class="form-label">{{ __('common.page_type') }}</label>
+                                <select class="form-select" id="page_type" onchange="setPageType(this.value)">
+                                    <option value="">{{ __('common.custom_page') }}</option>
+                                    <option value="about-us">About Us / من نحن</option>
+                                    <option value="terms-and-conditions">Terms & Conditions / الشروط والأحكام</option>
+                                    <option value="faq">FAQs / الأسئلة الشائعة</option>
+                                    <option value="privacy-policy">Privacy Policy / سياسة الخصوصية</option>
+                                </select>
+                                <small class="text-muted">{{ __('common.select_predefined_or_custom') }}</small>
+                            </div>
+
                             <!-- English Title -->
                             <div class="mb-3">
                                 <label for="title_en" class="form-label">{{ __('common.title') }} ({{ __('common.english') }})</label>
-                                <input type="text" class="form-control @error('title_en') is-invalid @enderror" 
+                                <input type="text" class="form-control @error('title_en') is-invalid @enderror"
                                        id="title_en" name="title_en" value="{{ old('title_en') }}" required>
                                 @error('title_en')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -170,15 +183,18 @@ window.addEventListener('load', function() {
         }
         
         try {
-            // Auto-generate slug from English title
+            // Auto-generate slug from English title (only if not using predefined type)
             document.getElementById('title_en').addEventListener('input', function(e) {
-                const slug = e.target.value
-                    .toLowerCase()
-                    .replace(/[^\w\s-]/g, '')
-                    .replace(/\s+/g, '-')
-                    .replace(/-+/g, '-')
-                    .trim();
-                document.getElementById('slug').value = slug;
+                const pageType = document.getElementById('page_type').value;
+                if (!pageType) { // Only auto-generate for custom pages
+                    const slug = e.target.value
+                        .toLowerCase()
+                        .replace(/[^\w\s-]/g, '')
+                        .replace(/\s+/g, '-')
+                        .replace(/-+/g, '-')
+                        .trim();
+                    document.getElementById('slug').value = slug;
+                }
             });
 
             // Initialize Quill editors
@@ -221,5 +237,45 @@ window.addEventListener('load', function() {
         }
     }, 500);
 });
+
+// Function to set predefined page content
+function setPageType(type) {
+    const pageTemplates = {
+        'about-us': {
+            title_en: 'About Us',
+            title_ar: 'من نحن',
+            slug: 'about-us'
+        },
+        'terms-and-conditions': {
+            title_en: 'Terms & Conditions',
+            title_ar: 'الشروط والأحكام',
+            slug: 'terms-and-conditions'
+        },
+        'faq': {
+            title_en: 'Frequently Asked Questions',
+            title_ar: 'الأسئلة الشائعة',
+            slug: 'faq'
+        },
+        'privacy-policy': {
+            title_en: 'Privacy Policy',
+            title_ar: 'سياسة الخصوصية',
+            slug: 'privacy-policy'
+        }
+    };
+
+    if (type && pageTemplates[type]) {
+        const template = pageTemplates[type];
+        document.getElementById('title_en').value = template.title_en;
+        document.getElementById('title_ar').value = template.title_ar;
+        document.getElementById('slug').value = template.slug;
+        document.getElementById('slug').readOnly = true;
+    } else {
+        // Custom page - clear fields and allow editing
+        document.getElementById('title_en').value = '';
+        document.getElementById('title_ar').value = '';
+        document.getElementById('slug').value = '';
+        document.getElementById('slug').readOnly = false;
+    }
+}
 </script>
 @endsection

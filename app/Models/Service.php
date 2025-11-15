@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
-class Service extends Model
+class Service extends Model implements HasMedia
 {
-    use SoftDeletes;
+    use SoftDeletes, InteractsWithMedia;
 
     protected $fillable = [
         'provider_id',
@@ -64,5 +66,45 @@ class Service extends Model
             return (float) $this->home_service_price;
         }
         return (float) $this->price;
+    }
+
+    /**
+     * Register media collections for service images
+     */
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('service_images')
+            ->useDisk('public')
+            ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/jpg']);
+    }
+
+    /**
+     * Get service images URLs
+     */
+    public function getImagesAttribute()
+    {
+        return $this->getMedia('service_images')->map(function ($media) {
+            return $media->getUrl();
+        })->toArray();
+    }
+
+    /**
+     * Get first service image URL (for backward compatibility)
+     */
+    public function getImageUrlAttribute()
+    {
+        $firstImage = $this->getFirstMedia('service_images');
+        if ($firstImage) {
+            return $firstImage->getUrl();
+        }
+        return null;
+    }
+
+    /**
+     * Get gallery images (for backward compatibility)
+     */
+    public function getGalleryAttribute()
+    {
+        return $this->images;
     }
 }

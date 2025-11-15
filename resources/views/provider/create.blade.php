@@ -79,14 +79,35 @@
                                        value="{{ old('business_name') }}" required>
                             </div>
 
+                            <!-- Logo Upload -->
                             <div class="mb-3">
-                                <label for="business_type" class="form-label">{{ __('providers.business_type') }} <span class="text-danger">*</span></label>
-                                <select class="form-select" id="business_type" name="business_type" required>
-                                    <option value="">{{ __('providers.select_type') }}</option>
-                                    <option value="salon" {{ old('business_type') === 'salon' ? 'selected' : '' }}>{{ __('providers.salon') }}</option>
-                                    <option value="clinic" {{ old('business_type') === 'clinic' ? 'selected' : '' }}>{{ __('providers.clinic') }}</option>
-                                    <option value="makeup_artist" {{ old('business_type') === 'makeup_artist' ? 'selected' : '' }}>{{ __('providers.makeup_artist') }}</option>
-                                    <option value="hair_stylist" {{ old('business_type') === 'hair_stylist' ? 'selected' : '' }}>{{ __('providers.hair_stylist') }}</option>
+                                <label for="logo" class="form-label">
+                                    <i class="bx bx-image-alt me-1"></i>{{ __('providers.logo') }}
+                                </label>
+                                <input type="file" class="form-control" id="logo" name="logo" 
+                                       accept="image/jpeg,image/png,image/jpg">
+                                <small class="text-muted">{{ __('providers.logo_hint') }}</small>
+                            </div>
+
+                            <!-- Building Image Upload -->
+                            <div class="mb-3">
+                                <label for="building_image" class="form-label">
+                                    <i class="bx bx-buildings me-1"></i>{{ __('providers.building_image') }}
+                                </label>
+                                <input type="file" class="form-control" id="building_image" name="building_image"
+                                       accept="image/jpeg,image/png,image/jpg">
+                                <small class="text-muted">{{ __('providers.building_image_hint') }}</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="category_id" class="form-label">{{ __('providers.category') }} <span class="text-danger">*</span></label>
+                                <select class="form-select" id="category_id" name="category_id" required>
+                                    <option value="">{{ __('providers.select_category') }}</option>
+                                    @foreach($categories as $category)
+                                        <option value="{{ $category->id }}" {{ old('category_id') == $category->id ? 'selected' : '' }}>
+                                            {{ app()->getLocale() === 'ar' ? $category->name_ar : $category->name_en }}
+                                        </option>
+                                    @endforeach
                                 </select>
                             </div>
 

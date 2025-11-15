@@ -470,11 +470,17 @@
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json',
+                            'Accept': 'application/json',
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         },
                         body: JSON.stringify({ status: status })
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
                     .then(data => {
                         if (data.success) {
                             Swal.fire('{{ __('bookings.updated') }}', data.message, 'success')
@@ -484,6 +490,7 @@
                         }
                     })
                     .catch(error => {
+                        console.error('Error:', error);
                         Swal.fire('{{ __('bookings.error') }}', '{{ __('bookings.something_went_wrong') }}', 'error');
                     });
                 }
@@ -512,6 +519,7 @@
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json',
+                            'Accept': 'application/json',
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         },
                         body: JSON.stringify({
@@ -520,7 +528,12 @@
                             cancelled_by: 'admin'
                         })
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
                     .then(data => {
                         if (data.success) {
                             Swal.fire('{{ __('bookings.cancelled_success') }}', data.message, 'success')
@@ -530,6 +543,7 @@
                         }
                     })
                     .catch(error => {
+                        console.error('Error:', error);
                         Swal.fire('{{ __('bookings.error') }}', '{{ __('bookings.something_went_wrong') }}', 'error');
                     });
                 }
@@ -551,10 +565,16 @@
                     fetch(`/bookings/{{ $booking['id'] }}`, {
                         method: 'DELETE',
                         headers: {
+                            'Accept': 'application/json',
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         }
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
                     .then(data => {
                         if (data.success) {
                             Swal.fire('{{ __('bookings.deleted') }}', data.message, 'success')
@@ -564,6 +584,7 @@
                         }
                     })
                     .catch(error => {
+                        console.error('Error:', error);
                         Swal.fire('{{ __('bookings.error') }}', '{{ __('bookings.something_went_wrong') }}', 'error');
                     });
                 }

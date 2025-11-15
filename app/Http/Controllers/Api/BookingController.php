@@ -263,8 +263,8 @@ class BookingController extends Controller
         // Check working hours
         if ($provider->working_hours && isset($provider->working_hours[$dayOfWeek])) {
             $workingHours = $provider->working_hours[$dayOfWeek];
-            
-            if ($time < $workingHours['start'] || $time > $workingHours['end']) {
+
+            if ($time < $workingHours['open'] || $time > $workingHours['close']) {
                 throw ValidationException::withMessages([
                     'start_time' => ['Time is outside provider working hours.']
                 ]);
@@ -468,7 +468,14 @@ class BookingController extends Controller
         }
 
         // Calculate hours until appointment
-        $appointmentDateTime = \Carbon\Carbon::parse($booking->booking_date . ' ' . $booking->booking_time);
+        // Use start_time if available, otherwise fall back to booking_time
+        $timeField = $booking->start_time ?? $booking->booking_time;
+        if (!$timeField) {
+            // If no time is set, assume appointment is in the future
+            $appointmentDateTime = \Carbon\Carbon::parse($booking->booking_date)->endOfDay();
+        } else {
+            $appointmentDateTime = \Carbon\Carbon::parse($timeField);
+        }
         $hoursUntilAppointment = now()->diffInHours($appointmentDateTime, false);
 
         // If appointment already passed, no refund
@@ -536,7 +543,7 @@ class BookingController extends Controller
                 'reason' => $feeInfo['reason'],
                 'hours_until_appointment' => $feeInfo['hours_until_appointment'] ?? null,
                 'appointment_date' => $booking->booking_date,
-                'appointment_time' => $booking->booking_time,
+                'appointment_time' => $booking->start_time ?? $booking->booking_time,
             ]
         ]);
     }

@@ -224,7 +224,7 @@
                                 </td>
                                 <td>
                                 <div class="d-flex align-items-center">
-                                    <img src="{{ $provider['avatar_url'] ?? '/images/default-avatar.png' }}" class="avatar-sm rounded-circle me-2" alt="{{ $provider['business_name'] ?? 'Provider' }}">
+                                    <img src="{{ $provider['logo_url'] ?? '/images/default-business.svg' }}" class="avatar-sm rounded-circle me-2 object-fit-cover" alt="{{ $provider['business_name'] ?? 'Provider' }}">
                                     <div class="d-flex flex-column">
                                     <span class="fw-semibold">{{ $provider['business_name'] ?? 'N/A' }}</span>
                                     <small class="text-muted">({{ $provider['business_type'] ?? 'General' }})</small>

@@ -57,6 +57,7 @@ return [
     'basic_information' => 'Basic Information',
     'business_info' => 'Business Information',
     'select_type' => 'Select Type',
+    'select_category' => 'Select Category',
     'select_city' => 'Select City',
     'business_structure' => 'Business Structure',
     'service_category' => 'Service Category',
@@ -83,6 +84,7 @@ return [
     'special_off_days' => 'Special Off Days (Optional)',
     'add_holidays' => 'Add Special Holidays/Vacations',
     'select_date' => 'Select date',
+    'category' => 'Category',
     'off_days_hint' => 'Add dates when the provider will be unavailable (holidays, vacations, etc.)',
     'create_provider' => 'Create Provider',
     'phone_otp_hint' => 'Provider will use this phone number for OTP login',
@@ -109,6 +111,7 @@ return [
     'your_message' => 'Your message',
     'press_enter' => 'Press <kbd>Enter</kbd> to send • <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line',
     'send' => 'Send',
+    'notify' => 'Notify',
     'send_notification' => 'Send Notification to Provider',
     'title' => 'Title',
     'message' => 'Message',
@@ -258,4 +261,10 @@ return [
     'national_id' => 'National ID',
     'agreement_contract' => 'Agreement Contract',
     'file_format_hint' => 'Accepted formats: PDF, JPG, PNG (Max: 5MB)',
+    
+    // Provider Images
+    'logo' => 'Business Logo',
+    'logo_hint' => 'Upload your business logo (JPG, PNG - max 2MB)',
+    'building_image' => 'Building/Location Image',
+    'building_image_hint' => 'Upload an image of your building from outside (JPG, PNG - max 5MB)',
 ];

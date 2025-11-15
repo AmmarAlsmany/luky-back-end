@@ -103,6 +103,7 @@ class NotificationService
                 'booking_number' => $booking->booking_number,
                 'provider_name' => $provider->business_name,
                 'total_amount' => $booking->total_amount,
+                'payment_status' => $booking->payment_status,
                 'timeout_minutes' => $timeoutMinutes,
                 'confirmed_at' => $booking->confirmed_at?->toIso8601String(),
             ]

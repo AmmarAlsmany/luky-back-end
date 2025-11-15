@@ -79,6 +79,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
         // Media
         Route::post('/provider/gallery', [ProviderController::class, 'uploadGallery']);
         Route::post('/provider/logo', [ProviderController::class, 'uploadLogo']);
+        Route::post('/provider/building-image', [ProviderController::class, 'uploadBuildingImage']);
 
         // Services
         Route::get('/provider/services', [ProviderController::class, 'getServices']);
@@ -139,6 +140,12 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
 
     // TEST: Send test notification
     Route::post('/notifications/test', [NotificationController::class, 'sendTestNotification']);
+
+    // Send message to admin
+    Route::post('/notifications/send-to-admin', [NotificationController::class, 'sendMessageToAdmin']);
+
+    // Get admin conversation messages
+    Route::get('/notifications/admin-messages', [NotificationController::class, 'getAdminMessages']);
 
     // User Address routes (all authenticated users)
     Route::get('/addresses', [UserAddressController::class, 'index']);

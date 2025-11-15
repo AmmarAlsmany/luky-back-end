@@ -16,7 +16,7 @@
         </div>
     </div>
 
-    <form action="{{ route('services.update', $service->id) }}" method="POST">
+    <form action="{{ route('services.update', $service->id) }}" method="POST" enctype="multipart/form-data">
         @csrf
         @method('PUT')
         <div class="row">
@@ -189,6 +189,72 @@
                 </div>
             </div>
 
+                {{-- Service Images --}}
+                <div class="card border shadow-sm">
+                    <div class="card-header bg-light border-bottom">
+                        <h5 class="card-title mb-0 fw-semibold">
+                            <i class="mdi mdi-image-multiple text-info me-2"></i>Service Images
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Current Images -->
+                        @if($service->getMedia('service_images')->count() > 0)
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Current Images ({{ $service->getMedia('service_images')->count() }})</label>
+                                <div class="row g-2">
+                                    @foreach($service->getMedia('service_images') as $media)
+                                        <div class="col-4">
+                                            <div class="position-relative">
+                                                <img src="{{ $media->getUrl() }}" class="img-thumbnail" style="width: 100%; height: 80px; object-fit: cover;">
+                                                <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-1"
+                                                        onclick="deleteImage({{ $media->id }})" title="Delete">
+                                                    <i class="mdi mdi-delete"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+
+                        <div class="alert alert-info border-info mb-3">
+                            <div class="d-flex align-items-center">
+                                <i class="mdi mdi-information fs-20 me-2"></i>
+                                <div>
+                                    <strong>Image Guidelines</strong>
+                                    <ul class="mb-0 mt-1 small ps-3">
+                                        <li>Upload up to 3 images total</li>
+                                        <li>Supported formats: JPG, PNG</li>
+                                        <li>Max size: 5MB per image</li>
+                                        <li>Images will be shown to clients</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="service_images" class="form-label fw-semibold">
+                                <i class="mdi mdi-camera me-1"></i>Add More Images (max {{ 3 - $service->getMedia('service_images')->count() }})
+                            </label>
+                            <input type="file"
+                                   class="form-control @error('service_images') is-invalid @enderror"
+                                   id="service_images"
+                                   name="service_images[]"
+                                   accept="image/jpeg,image/png,image/jpg"
+                                   multiple
+                                   onchange="previewImages(this)">
+                            @error('service_images')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <small class="text-muted">You can add up to {{ 3 - $service->getMedia('service_images')->count() }} more image(s)</small>
+                        </div>
+
+                        <!-- Image Preview -->
+                        <div id="image-preview" class="row g-2 mt-2"></div>
+                    </div>
+                </div>
+            </div>
+
             <div class="col-xl-4">
                 {{-- Status & Settings --}}
                 <div class="card border shadow-sm">
@@ -268,6 +334,64 @@ function toggleHomeServicePrice() {
         input.required = false;
         input.value = '';
     }
+}
+
+function previewImages(input) {
+    const preview = document.getElementById('image-preview');
+    preview.innerHTML = '';
+
+    if (input.files) {
+        const maxImages = {{ 3 - $service->getMedia('service_images')->count() }};
+        const filesArray = Array.from(input.files).slice(0, maxImages);
+
+        filesArray.forEach((file, index) => {
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                const col = document.createElement('div');
+                col.className = 'col-4';
+                col.innerHTML = `
+                    <div class="position-relative">
+                        <img src="${e.target.result}" class="img-thumbnail" style="width: 100%; height: 80px; object-fit: cover;">
+                        <span class="badge bg-success position-absolute top-0 start-0 m-1">New ${index + 1}</span>
+                    </div>
+                `;
+                preview.appendChild(col);
+            };
+
+            reader.readAsDataURL(file);
+        });
+
+        if (input.files.length > maxImages) {
+            alert(`Maximum ${maxImages} images can be added. Only the first ${maxImages} will be uploaded.`);
+        }
+    }
+}
+
+function deleteImage(mediaId) {
+    if (!confirm('Are you sure you want to delete this image?')) {
+        return;
+    }
+
+    fetch(`/admin/services/media/${mediaId}`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error deleting image');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error deleting image');
+    });
 }
 </script>
 @endsection

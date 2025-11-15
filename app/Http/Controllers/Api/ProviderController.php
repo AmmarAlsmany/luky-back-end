@@ -34,7 +34,7 @@ class ProviderController extends Controller
                 'email' => 'required|email|unique:users,email',
                 'phone' => 'required|string|unique:users,phone',
                 'business_name' => 'required|string|max:255',
-                'business_type' => 'required|in:salon,clinic,makeup_artist,hair_stylist,individual,company,establishment',
+                'category_id' => 'required|exists:service_categories,id', // Use category instead of business_type
                 'description' => 'nullable|string|max:1000',
                 'city_id' => 'required|exists:cities,id',
                 'address' => 'nullable|string|max:500',
@@ -46,6 +46,10 @@ class ProviderController extends Controller
 
             DB::beginTransaction();
             try {
+                // Get category and map to business_type (same as dashboard)
+                $category = \App\Models\ServiceCategory::findOrFail($validated['category_id']);
+                $businessType = $category->getBusinessType();
+
                 // Create new user
                 $user = User::create([
                     'name' => $validated['name'],
@@ -62,8 +66,9 @@ class ProviderController extends Controller
                 $provider = ServiceProvider::create([
                     'user_id' => $user->id,
                     'business_name' => $validated['business_name'],
-                    'business_type' => $validated['business_type'],
+                    'business_type' => $businessType, // Auto-mapped from category
                     'description' => $validated['description'] ?? '',
+                    'city_id' => $validated['city_id'],
                     'address' => $validated['address'] ?? '',
                     'latitude' => $validated['latitude'] ?? null,
                     'longitude' => $validated['longitude'] ?? null,
@@ -101,18 +106,25 @@ class ProviderController extends Controller
 
         $validated = $request->validate([
             'business_name' => 'required|string|max:255',
-            'business_type' => 'required|in:salon,clinic,makeup_artist,hair_stylist',
-            'description' => 'required|string|max:1000',
+            'category_id' => 'required|exists:service_categories,id', // Category determines business_type
+            'description' => 'nullable|string|max:1000',
             'city_id' => 'required|exists:cities,id',
-            'address' => 'required|string|max:500',
+            'address' => 'required|string|max:500', // Required - clients need to find provider
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
-            'working_hours' => 'required|array',
+            'working_hours' => 'required|array', // Required - needed for booking availability
+            'working_hours.*.day' => 'required|string',
+            'working_hours.*.open' => 'required|date_format:H:i',
+            'working_hours.*.close' => 'required|date_format:H:i',
             'off_days' => 'nullable|array',
         ]);
 
         DB::beginTransaction();
         try {
+            // Get category and map to business_type (same as dashboard)
+            $category = \App\Models\ServiceCategory::findOrFail($validated['category_id']);
+            $businessType = $category->getBusinessType();
+
             // Update user type to provider
             $user->update(['user_type' => 'provider']);
             $user->assignRole('provider');
@@ -121,12 +133,12 @@ class ProviderController extends Controller
             $provider = ServiceProvider::create([
                 'user_id' => $user->id,
                 'business_name' => $validated['business_name'],
-                'business_type' => $validated['business_type'],
-                'description' => $validated['description'],
+                'business_type' => $businessType, // Auto-mapped from category
+                'description' => $validated['description'] ?? '',
                 'city_id' => $validated['city_id'],
                 'address' => $validated['address'],
-                'latitude' => $validated['latitude'],
-                'longitude' => $validated['longitude'],
+                'latitude' => $validated['latitude'] ?? null,
+                'longitude' => $validated['longitude'] ?? null,
                 'working_hours' => $validated['working_hours'],
                 'off_days' => $validated['off_days'] ?? [],
                 'verification_status' => 'pending',
@@ -308,7 +320,7 @@ class ProviderController extends Controller
         }
 
         $validated = $request->validate([
-            'logo' => 'required|image|mimes:jpg,jpeg,png|max:1024' // 1MB
+            'logo' => 'required|image|mimes:jpg,jpeg,png|max:2048' // 2MB
         ]);
 
         // Delete existing logo
@@ -323,6 +335,40 @@ class ProviderController extends Controller
             'message' => 'Logo uploaded successfully',
             'data' => [
                 'logo_url' => $media->getUrl()
+            ]
+        ]);
+    }
+
+    /**
+     * Upload provider building image
+     */
+    public function uploadBuildingImage(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $provider = $user->providerProfile;
+
+        if (!$provider) {
+            throw ValidationException::withMessages([
+                'message' => ['Provider profile not found.']
+            ]);
+        }
+
+        $validated = $request->validate([
+            'building_image' => 'required|image|mimes:jpg,jpeg,png|max:5120' // 5MB
+        ]);
+
+        // Delete existing building image
+        $provider->clearMediaCollection('building_image');
+
+        // Upload new building image
+        $media = $provider->addMedia($request->file('building_image'))
+            ->toMediaCollection('building_image');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Building image uploaded successfully',
+            'data' => [
+                'building_image_url' => $media->getUrl()
             ]
         ]);
     }

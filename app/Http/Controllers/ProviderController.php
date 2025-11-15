@@ -85,6 +85,7 @@ class ProviderController extends Controller
                 'phone' => $user->phone ?? 'N/A',
                 'status' => $provider->is_active ? 'active' : 'inactive',
                 'avatar_url' => $user->avatar ?? null,
+                'logo_url' => $provider->logo_url,
                 'business_name' => $provider->business_name ?? null,
                 'business_type' => $provider->business_type ?? 'individual',
                 'verification_status' => $provider->verification_status ?? 'pending',
@@ -199,7 +200,8 @@ class ProviderController extends Controller
     public function create()
     {
         $cities = City::select('id', 'name_en', 'name_ar')->get();
-        return view('provider.create', compact('cities'));
+        $categories = \App\Models\ServiceCategory::active()->get();
+        return view('provider.create', compact('cities', 'categories'));
     }
 
     /**
@@ -212,7 +214,7 @@ class ProviderController extends Controller
             'email' => 'required|email|unique:users,email',
             'phone' => 'required|string|unique:users,phone',
             'business_name' => 'required|string|max:255',
-            'business_type' => 'required|in:salon,clinic,makeup_artist,hair_stylist',
+            'category_id' => 'required|exists:service_categories,id',
             'description' => 'nullable|string|max:1000',
             'city_id' => 'required|exists:cities,id',
             'address' => 'nullable|string|max:500',
@@ -220,6 +222,8 @@ class ProviderController extends Controller
             'longitude' => 'nullable|numeric|between:-180,180',
             'working_hours' => 'nullable|array',
             'off_days' => 'nullable|array',
+            'logo' => 'nullable|image|mimes:jpeg,jpg,png|max:2048', // 2MB max
+            'building_image' => 'nullable|image|mimes:jpeg,jpg,png|max:5120', // 5MB max
             'documents.*' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120', // 5MB max per file
             'contract_start_date' => 'nullable|date',
             'contract_end_date' => 'nullable|date|after:contract_start_date',
@@ -229,6 +233,10 @@ class ProviderController extends Controller
 
         DB::beginTransaction();
         try {
+            // Get category and map to business_type
+            $category = \App\Models\ServiceCategory::findOrFail($validated['category_id']);
+            $businessType = $category->getBusinessType();
+
             // Create new user
             $user = User::create([
                 'name' => $validated['name'],
@@ -244,7 +252,7 @@ class ProviderController extends Controller
             $provider = ServiceProvider::create([
                 'user_id' => $user->id,
                 'business_name' => $validated['business_name'],
-                'business_type' => $validated['business_type'],
+                'business_type' => $businessType, // Mapped from category
                 'description' => $validated['description'] ?? '',
                 'city_id' => $validated['city_id'],
                 'address' => $validated['address'] ?? '',
@@ -260,7 +268,7 @@ class ProviderController extends Controller
             // Handle document uploads
             if ($request->has('documents')) {
                 $documentTypes = ['freelance_license', 'commercial_register', 'municipal_license', 'national_id', 'agreement_contract'];
-                
+
                 foreach ($documentTypes as $docType) {
                     if ($request->hasFile("documents.{$docType}")) {
                         $file = $request->file("documents.{$docType}");
@@ -298,6 +306,17 @@ class ProviderController extends Controller
             }
 
             DB::commit();
+
+            // Handle media uploads AFTER commit to ensure proper saving
+            // Handle logo upload
+            if ($request->hasFile('logo')) {
+                $provider->addMediaFromRequest('logo')->toMediaCollection('logo');
+            }
+
+            // Handle building image upload
+            if ($request->hasFile('building_image')) {
+                $provider->addMediaFromRequest('building_image')->toMediaCollection('building_image');
+            }
 
             return redirect()->route('providers.pending')
                 ->with('success', 'Provider created successfully and pending approval.');
@@ -368,6 +387,8 @@ class ProviderController extends Controller
             'rejection_reason' => $providerProfile->rejection_reason,
             'rating' => $providerProfile->average_rating ?? 0,
             'total_reviews' => $providerProfile->total_reviews ?? 0,
+            'logo_url' => $providerProfile->logo_url,
+            'building_image_url' => $providerProfile->building_image_url,
             'address' => $providerProfile->address,
             'latitude' => $providerProfile->latitude,
             'longitude' => $providerProfile->longitude,
