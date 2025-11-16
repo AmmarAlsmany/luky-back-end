@@ -586,7 +586,7 @@ class ProviderController extends Controller
                     'is_active' => true,
                     'verified_at' => now(),
                 ]);
-                $provider->update(['status' => 'active']);
+                // Status is already set via is_active above
 
                 // Send approval notification
                 \App\Models\Notification::create([

@@ -82,7 +82,11 @@ class ReportsController extends Controller
         $startDate = $request->input('start_date', now()->subMonths(6));
         $endDate = $request->input('end_date', now());
 
-        $dateFormat = match($period) {
+        // PostgreSQL compatible date formatting - validated against whitelist
+        $allowedPeriods = ['day', 'week', 'month', 'year'];
+        $validatedPeriod = in_array($period, $allowedPeriods) ? $period : 'month';
+
+        $dateFormat = match($validatedPeriod) {
             'day' => 'YYYY-MM-DD',
             'week' => 'IYYY-IW',
             'month' => 'YYYY-MM',
@@ -92,11 +96,7 @@ class ReportsController extends Controller
 
         $revenueData = Payment::where('status', 'completed')
             ->whereBetween('created_at', [$startDate, $endDate])
-            ->select(
-                DB::raw("TO_CHAR(created_at, '{$dateFormat}') as period"),
-                DB::raw('SUM(amount) as total_revenue'),
-                DB::raw('COUNT(*) as transaction_count')
-            )
+            ->selectRaw("TO_CHAR(created_at, ?) as period, SUM(amount) as total_revenue, COUNT(*) as transaction_count", [$dateFormat])
             ->groupBy('period')
             ->orderBy('period', 'asc')
             ->get();
@@ -290,6 +290,7 @@ class ReportsController extends Controller
         $commissionByProvider = Booking::join('service_providers', 'bookings.provider_id', '=', 'service_providers.id')
             ->join('users', 'service_providers.user_id', '=', 'users.id')
             ->where('bookings.status', 'completed')
+            ->where('bookings.total_amount', '>', 0) // Avoid division by zero
             ->whereBetween('bookings.created_at', [$startDate, $endDate])
             ->select(
                 'service_providers.id',
@@ -298,7 +299,7 @@ class ReportsController extends Controller
                 DB::raw('SUM(bookings.commission_amount) as total_commission'),
                 DB::raw('SUM(bookings.total_amount) as total_revenue'),
                 DB::raw('COUNT(bookings.id) as booking_count'),
-                DB::raw('AVG(bookings.commission_amount / bookings.total_amount * 100) as avg_commission_rate')
+                DB::raw('AVG(CASE WHEN bookings.total_amount > 0 THEN (bookings.commission_amount / bookings.total_amount * 100) ELSE 0 END) as avg_commission_rate')
             )
             ->groupBy('service_providers.id', 'service_providers.business_name', 'users.name')
             ->orderByDesc('total_commission')
@@ -329,11 +330,11 @@ class ReportsController extends Controller
         $paymentStats = Payment::where('status', 'completed')
             ->whereBetween('created_at', [$startDate, $endDate])
             ->select(
-                'payment_method',
+                'method as payment_method',
                 DB::raw('COUNT(*) as transaction_count'),
                 DB::raw('SUM(amount) as total_amount')
             )
-            ->groupBy('payment_method')
+            ->groupBy('method')
             ->get();
 
         return response()->json([

@@ -201,11 +201,14 @@ class DashboardController extends Controller
     {
         $dateRange = $this->getDateRange($period);
 
+        // Use static date format to prevent SQL injection
+        $dateFormatExpression = DB::raw("to_char(created_at, 'YYYY-MM-DD')");
+
         $revenue = Booking::where('status', 'completed')
             ->whereBetween('created_at', $dateRange)
             ->selectRaw("to_char(created_at, 'YYYY-MM-DD') as date, SUM(total_amount) as total")
-            ->groupBy(DB::raw("to_char(created_at, 'YYYY-MM-DD')"))
-            ->orderByRaw("to_char(created_at, 'YYYY-MM-DD')")
+            ->groupBy($dateFormatExpression)
+            ->orderBy($dateFormatExpression)
             ->get();
 
         return [
@@ -221,10 +224,13 @@ class DashboardController extends Controller
     {
         $dateRange = $this->getDateRange($period);
 
+        // Use static date format to prevent SQL injection
+        $dateFormatExpression = DB::raw("to_char(created_at, 'YYYY-MM-DD')");
+
         $bookings = Booking::whereBetween('created_at', $dateRange)
             ->selectRaw("to_char(created_at, 'YYYY-MM-DD') as date, status, COUNT(*) as count")
-            ->groupBy(DB::raw("to_char(created_at, 'YYYY-MM-DD')"), 'status')
-            ->orderByRaw("to_char(created_at, 'YYYY-MM-DD')")
+            ->groupBy($dateFormatExpression, 'status')
+            ->orderBy($dateFormatExpression)
             ->get();
 
         $dateKeys = $bookings->pluck('date')->unique()->values();
@@ -276,6 +282,8 @@ class DashboardController extends Controller
                     'business_name' => $provider->business_name,
                     'business_type' => $provider->business_type ?? 'individual',
                     'city_id' => $provider->city_id,
+                    'city_name_en' => $provider->city->name_en ?? 'Unknown',
+                    'city_name_ar' => $provider->city->name_ar ?? 'غير معروف',
                     'avatar' => $provider->user->avatar ?? null,
                     'total_bookings' => $provider->completed_bookings_count ?? 0,
                     'total_revenue' => $provider->total_revenue ?? 0,

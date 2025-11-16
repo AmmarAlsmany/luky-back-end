@@ -219,17 +219,6 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::delete('/content/pages/{id}', [\App\Http\Controllers\StaticPagesController::class, 'destroy'])->name('static-pages.destroy');
     });
 
-    // Debug route - assign admin role
-    Route::get('/debug/assign-admin', function() {
-        $user = auth()->user();
-        if (!$user) {
-            return 'Not logged in';
-        }
-        
-        $user->assignRole('admin');
-        return 'Admin role assigned to ' . $user->name . ' (ID: ' . $user->id . '). Current roles: ' . $user->getRoleNames()->implode(', ');
-    });
-
     // Ignore Chrome DevTools requests
     Route::get('.well-known/{any}', function() {
         abort(404);

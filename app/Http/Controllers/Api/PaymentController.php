@@ -475,23 +475,48 @@ HTML;
      */
     public function webhook(Request $request): JsonResponse
     {
-        // Verify webhook signature
-        // MyFatoorah sends webhook with signature for security
-        
+        // Verify webhook signature for security
+        $webhookSecret = config('services.myfatoorah.webhook_secret');
+
+        if ($webhookSecret && $webhookSecret !== 'your_webhook_secret') {
+            $signature = $request->header('X-Webhook-Signature');
+            $payload = $request->getContent();
+            $expectedSignature = hash_hmac('sha256', $payload, $webhookSecret);
+
+            if (!hash_equals($expectedSignature, $signature ?? '')) {
+                \Log::warning('Invalid webhook signature from MyFatoorah', [
+                    'ip' => $request->ip(),
+                    'signature' => $signature,
+                ]);
+                return response()->json(['success' => false, 'message' => 'Invalid signature'], 401);
+            }
+        }
+
         $paymentId = $request->get('Data.InvoiceId');
-        
+
         if (!$paymentId) {
-            return response()->json(['success' => false], 400);
+            \Log::warning('Webhook received without payment ID', [
+                'data' => $request->all(),
+            ]);
+            return response()->json(['success' => false, 'message' => 'Missing payment ID'], 400);
         }
 
         // Process payment status update
-        $result = $this->myFatoorah->getPaymentStatus($paymentId);
+        try {
+            $result = $this->myFatoorah->getPaymentStatus($paymentId);
 
-        if ($result['success']) {
-            $this->processPaymentStatus($result['data']);
+            if ($result['success']) {
+                $this->processPaymentStatus($result['data']);
+            }
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            \Log::error('Webhook processing failed', [
+                'payment_id' => $paymentId,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['success' => false, 'message' => 'Processing failed'], 500);
         }
-
-        return response()->json(['success' => true]);
     }
 
     /**

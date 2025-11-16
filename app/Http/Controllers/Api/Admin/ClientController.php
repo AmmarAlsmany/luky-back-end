@@ -431,9 +431,9 @@ class ClientController extends Controller
                         'id' => $payment->id,
                         'amount' => $payment->amount,
                         'status' => $payment->status,
-                        'type' => $payment->payment_method ?? 'payment',
+                        'type' => $payment->method ?? 'payment',
                         'description' => $payment->booking ? "Booking #{$payment->booking->id}" : 'Payment',
-                        'payment_method' => $payment->payment_method,
+                        'payment_method' => $payment->method,
                         'transaction_id' => $payment->transaction_id,
                         'created_at' => $payment->created_at,
                     ];

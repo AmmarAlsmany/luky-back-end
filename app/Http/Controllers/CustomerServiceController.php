@@ -334,21 +334,8 @@ class CustomerServiceController extends Controller
                 'user_unread_count' => DB::raw('user_unread_count + 1'),
             ]);
 
-            // Send notification to client/provider
-            \App\Models\Notification::create([
-                'user_id' => $conversation->user_id,
-                'type' => 'admin_message',
-                'title' => 'Message from Admin',
-                'body' => $validated['message'],
-                'data' => [
-                    'sender_id' => auth()->id(),
-                    'sender_name' => auth()->user()->name,
-                    'conversation_id' => $conversation->id,
-                    'notification_type' => 'admin_message',
-                ],
-                'is_read' => false,
-                'is_sent' => true,
-            ]);
+            // Note: No notification is sent to avoid duplicate notifications
+            // The client app will receive messages through real-time polling in the chat screen
 
             DB::commit();
 

@@ -17,11 +17,11 @@ use App\Http\Controllers\Api\PromoCodeController;
 // Public routes - No authentication required
 Route::prefix('v1')->group(function () {
 
-    // Authentication
-    Route::post('/auth/send-otp', [OtpController::class, 'sendOtp']);
-    Route::post('/auth/verify-otp', [OtpController::class, 'verifyOtp']);
-    Route::post('/auth/resend-otp', [OtpController::class, 'resendOtp']);
-    Route::post('/auth/register', [AuthController::class, 'register']);
+    // Authentication (Rate Limited)
+    Route::post('/auth/send-otp', [OtpController::class, 'sendOtp'])->middleware('throttle:5,1');
+    Route::post('/auth/verify-otp', [OtpController::class, 'verifyOtp'])->middleware('throttle:10,1');
+    Route::post('/auth/resend-otp', [OtpController::class, 'resendOtp'])->middleware('throttle:3,1');
+    Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
 
     // Public Data APIs
     Route::get('/cities', [LocationController::class, 'cities']);
@@ -119,10 +119,10 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/provider/reviews', [ReviewController::class, 'getReceivedReviews']);
     });
 
-    // Client payment routes
+    // Client payment routes (Rate Limited)
     Route::middleware(['role:client'])->group(function () {
         Route::get('/payments/methods', [PaymentController::class, 'getPaymentMethods']);
-        Route::post('/payments/initiate', [PaymentController::class, 'initiatePayment']);
+        Route::post('/payments/initiate', [PaymentController::class, 'initiatePayment'])->middleware('throttle:10,1');
     });
 
     // Notification routes (all authenticated users)
@@ -187,8 +187,8 @@ Route::post('/v1/payments/webhook', [PaymentController::class, 'webhook']);
 // ============================================
 Route::prefix('admin')->group(function () {
 
-    // Public admin routes (no authentication)
-    Route::post('/auth/login', [App\Http\Controllers\Api\Admin\AdminAuthController::class, 'login']);
+    // Public admin routes (no authentication, rate limited)
+    Route::post('/auth/login', [App\Http\Controllers\Api\Admin\AdminAuthController::class, 'login'])->middleware('throttle:5,1');
 
     // Protected admin routes (requires authentication + dashboard role + active status)
     Route::middleware(['auth:sanctum', 'active'])->group(function () {

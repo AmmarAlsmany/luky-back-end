@@ -44,14 +44,14 @@ class ReportController extends Controller
         $lastMonthEnd = Carbon::now()->subMonth()->endOfMonth();
 
         return [
-            'total_revenue' => Payment::completed()->sum('amount'),
+            'total_revenue' => Payment::where('status', 'completed')->sum('amount'),
             'total_bookings' => Booking::count(),
-            'active_providers' => ServiceProvider::active()->count(),
-            'total_clients' => User::clients()->count(),
-            'today_revenue' => Payment::completed()->whereDate('created_at', $today)->sum('amount'),
+            'active_providers' => ServiceProvider::where('is_active', true)->where('verification_status', 'approved')->count(),
+            'total_clients' => User::whereHas('roles', fn($q) => $q->where('name', 'client'))->count(),
+            'today_revenue' => Payment::where('status', 'completed')->whereDate('created_at', $today)->sum('amount'),
             'today_bookings' => Booking::whereDate('created_at', $today)->count(),
-            'this_month_revenue' => Payment::completed()->where('created_at', '>=', $thisMonth)->sum('amount'),
-            'last_month_revenue' => Payment::completed()
+            'this_month_revenue' => Payment::where('status', 'completed')->where('created_at', '>=', $thisMonth)->sum('amount'),
+            'last_month_revenue' => Payment::where('status', 'completed')
                 ->whereBetween('created_at', [$lastMonth, $lastMonthEnd])
                 ->sum('amount'),
         ];
@@ -75,7 +75,7 @@ class ReportController extends Controller
         }
 
         // Revenue by day
-        $revenueByDay = Payment::completed()
+        $revenueByDay = Payment::where('status', 'completed')
             ->whereBetween('created_at', [$start, $end])
             ->selectRaw('DATE(created_at) as date, SUM(amount) as revenue, COUNT(*) as transactions')
             ->groupBy('date')
@@ -83,9 +83,9 @@ class ReportController extends Controller
             ->get();
 
         // Revenue by payment method
-        $revenueByMethod = Payment::completed()
+        $revenueByMethod = Payment::where('status', 'completed')
             ->whereBetween('created_at', [$start, $end])
-            ->selectRaw('method, SUM(amount) as revenue, COUNT(*) as transactions')
+            ->selectRaw('method as payment_method, SUM(amount) as revenue, COUNT(*) as transactions')
             ->groupBy('method')
             ->get();
 
@@ -257,7 +257,7 @@ class ReportController extends Controller
             ->get();
 
         // New vs returning clients
-        $newClients = User::clients()
+        $newClients = User::whereHas('roles', fn($q) => $q->where('name', 'client'))
             ->whereBetween('created_at', [$start, $end])
             ->count();
 
@@ -473,7 +473,7 @@ class ReportController extends Controller
     // Helper methods to get data
     private function getRevenueData($start, $end)
     {
-        $revenueByDay = Payment::completed()
+        $revenueByDay = Payment::where('status', 'completed')
             ->whereBetween('created_at', [$start, $end])
             ->selectRaw('DATE(created_at) as date, SUM(amount) as revenue, COUNT(*) as transactions')
             ->groupBy('date')

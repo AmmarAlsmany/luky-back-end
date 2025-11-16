@@ -265,16 +265,9 @@
                                                     </span>
                                                 </td>
                                                 <td>
-                                                    @php
-                                                        $cityNames = [
-                                                            1 => 'Riyadh',
-                                                            2 => 'Jeddah',
-                                                            3 => 'Makkah',
-                                                            4 => 'Madinah',
-                                                            5 => 'Dammam',
-                                                        ];
-                                                    @endphp
-                                                    <span class="text-muted">{{ $cityNames[$provider['city_id'] ?? 0] ?? 'Unknown' }}</span>
+                                                    <span class="text-muted">
+                                                        {{ app()->getLocale() === 'ar' ? ($provider['city_name_ar'] ?? 'غير معروف') : ($provider['city_name_en'] ?? 'Unknown') }}
+                                                    </span>
                                                 </td>
                                                 <td class="text-end">
                                                     <h6 class="mb-0 text-success">{{ __('dashboard.sar') }} {{ number_format($provider['revenue'] ?? 0, 2) }}</h6>

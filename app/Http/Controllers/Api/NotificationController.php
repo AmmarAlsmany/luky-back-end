@@ -345,21 +345,8 @@ class NotificationController extends Controller
             }
 
             foreach ($adminUsers as $admin) {
-                // Create notification
-                Notification::create([
-                    'user_id' => $admin->id,
-                    'type' => 'client_message',
-                    'title' => 'Message from ' . $user->name,
-                    'body' => $validated['message'],
-                    'data' => [
-                        'sender_id' => $user->id,
-                        'sender_name' => $user->name,
-                        'sender_phone' => $user->phone,
-                        'notification_type' => 'client_message',
-                    ],
-                    'is_read' => false,
-                    'is_sent' => false,
-                ]);
+                // Note: No notification is created for admins
+                // Admins will see messages in the dashboard's customer service chat section
 
                 // Create or get admin conversation
                 $conversation = AdminConversation::firstOrCreate([
@@ -388,19 +375,8 @@ class NotificationController extends Controller
                 ]);
             }
 
-            // Also create a copy for the user as sent message
-            Notification::create([
-                'user_id' => $user->id,
-                'type' => 'admin_message',
-                'title' => 'Message to Admin',
-                'body' => $validated['message'],
-                'data' => [
-                    'is_from_user' => true,
-                    'notification_type' => 'sent_to_admin',
-                ],
-                'is_read' => true, // Mark as read since it's the user's own message
-                'is_sent' => true,
-            ]);
+            // Note: No notification copy is created for the user
+            // The message will appear in the chat screen through real-time polling
 
             DB::commit();
 

@@ -434,11 +434,11 @@
 
             </div>
 
-            <div class="chat-box">
-                <ul class="chat-conversation-list list-unstyled p-3 admin-chatbox-height" data-simplebar>
+            <div class="chat-box" style="max-height: calc(100vh - 320px); display: flex; flex-direction: column;">
+                <ul class="chat-conversation-list list-unstyled p-3" data-simplebar style="flex: 1; overflow-y: auto; max-height: calc(100vh - 320px);">
 
               <li id="chat-placeholder">
-                <div class="d-flex align-items-center justify-content-center admin-chatbox-height text-center p-4">
+                <div class="d-flex align-items-center justify-content-center text-center p-4" style="min-height: 400px;">
                   <div>
                     <div class="mx-auto mb-3 d-flex align-items-center justify-content-center rounded-circle bg-light" style="width:75px;height:75px;">
                       <iconify-icon icon="solar:chat-round-call-bold" style="font-size:54px; line-height:1;"></iconify-icon>
@@ -626,8 +626,10 @@ document.addEventListener('DOMContentLoaded', function() {
             chatList.insertAdjacentHTML('beforeend', messageHtml);
         });
 
-        // Scroll to bottom
-        chatList.scrollTop = chatList.scrollHeight;
+        // Scroll to bottom smoothly
+        setTimeout(() => {
+            chatList.scrollTop = chatList.scrollHeight;
+        }, 100);
     }
     
     // Send message
