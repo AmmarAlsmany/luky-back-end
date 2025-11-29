@@ -17,6 +17,25 @@ class NotificationService
     }
 
     /**
+     * Get bilingual text (EN | AR) from translation keys
+     */
+    private function getBilingualText(string $key, array $replacements = []): string
+    {
+        $en = __('notifications.' . $key, $replacements, 'en');
+        $ar = __('notifications.' . $key, $replacements, 'ar');
+
+        return "{$en}\n{$ar}";
+    }
+
+    /**
+     * Get title in bilingual format (EN | AR)
+     */
+    private function getBilingualTitle(string $key): string
+    {
+        return __('notifications.' . $key, [], 'en');
+    }
+
+    /**
      * Send a notification
      */
     public function send(int $userId, string $type, string $title, string $body, array $data = []): ?Notification
@@ -88,10 +107,14 @@ class NotificationService
         $provider = $booking->provider;
         $timeoutMinutes = \App\Models\AppSetting::get('payment_timeout_minutes', 5);
 
-        // Bilingual message
-        $title = 'Booking Accepted! | تم قبول الحجز!';
-        $body = "{$provider->business_name} has accepted your booking. Please complete payment within {$timeoutMinutes} minutes.\n" .
-                "قبل {$provider->business_name} حجزك. يرجى إكمال الدفع خلال {$timeoutMinutes} دقيقة.";
+        $title = $this->getBilingualTitle('messages.booking_accepted_title');
+        $body = $this->getBilingualText('messages.booking_accepted_body', [
+            'provider' => $provider->business_name,
+            'timeout' => $timeoutMinutes,
+        ]) . "\n" . $this->getBilingualText('messages.booking_accepted_body_ar', [
+            'provider' => $provider->business_name,
+            'timeout' => $timeoutMinutes,
+        ]);
 
         $this->send(
             $booking->client_id,

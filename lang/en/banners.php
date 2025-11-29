@@ -97,4 +97,25 @@ return [
     'search_providers' => 'Search providers...',
     'click_to_select' => 'Click to select',
     'press_enter_to_add' => 'Press Enter to add',
+
+    // Toast Messages
+    'provider_color_reset' => 'Provider color reset to white',
+    'offer_bg_color_reset' => 'Offer background color reset to yellow',
+    'offer_text_color_reset' => 'Offer text color reset to black',
+    'fill_required_fields' => 'Please fill in all required fields and select a banner background.',
+    'end_date_must_be_after' => 'End date must be after start date.',
+    'select_banner_first' => 'Please select a banner background first.',
+    'preview_banner_first' => 'Please preview the banner first.',
+    'banner_downloaded' => 'Banner downloaded successfully!',
+    'download_failed' => 'Download failed. Please try again.',
+    'confirm_delete' => 'Are you sure you want to delete this ad? This action cannot be undone.',
+    'ad_deleted' => 'Ad deleted successfully!',
+    'delete_failed' => 'Failed to delete ad. Please try again.',
+    'failed_load_banner' => 'Failed to load banner data',
+    'editing_banner' => 'Editing banner',
+
+    // Status badges
+    'active' => 'Active',
+    'upcoming' => 'Upcoming',
+    'expired' => 'Expired',
 ];

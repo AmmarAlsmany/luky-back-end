@@ -89,6 +89,9 @@ class LocationController extends Controller
                 'cancellation_hours' => 24,
                 'otp_expiry_minutes' => 10
             ],
+            'payment_settings' => [
+                'payment_timeout_minutes' => (int) \App\Models\AppSetting::get('payment_timeout_minutes', 10),
+            ],
             'social_media' => [
                 'instagram' => 'https://instagram.com/luky.sa',
                 'twitter' => 'https://twitter.com/luky_sa',
@@ -112,9 +115,10 @@ class LocationController extends Controller
 
         $banners = \DB::table('banners')
             ->where('is_active', true)
-            ->where('status', 'active')
-            ->where('start_date', '<=', $now)
-            ->where('end_date', '>=', $now)
+            // Check dates directly instead of relying on status field
+            // This ensures banners are shown/hidden immediately without waiting for cron
+            ->whereDate('start_date', '<=', $now)
+            ->whereDate('end_date', '>=', $now)
             ->whereIn('display_location', ['home', 'all'])
             ->orderBy('display_order', 'asc')
             ->orderBy('created_at', 'desc')

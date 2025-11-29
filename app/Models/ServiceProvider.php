@@ -49,6 +49,11 @@ class ServiceProvider extends Model implements HasMedia
         'verified_at' => 'datetime',
     ];
 
+    protected $appends = [
+        'logo_url',
+        'building_image_url',
+    ];
+
     // Relationships
     public function user()
     {

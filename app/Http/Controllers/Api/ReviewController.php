@@ -54,7 +54,7 @@ class ReviewController extends Controller
 
         DB::beginTransaction();
         try {
-            // Create review
+            // Create review with pending approval status
             $review = Review::create([
                 'booking_id' => $booking->id,
                 'client_id' => $user->id,
@@ -62,6 +62,7 @@ class ReviewController extends Controller
                 'rating' => $validated['rating'],
                 'comment' => $validated['comment'] ?? null,
                 'is_visible' => true,
+                'approval_status' => 'pending', // Reviews need admin approval
             ]);
 
             // Update provider average rating and total reviews
@@ -71,11 +72,12 @@ class ReviewController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Review submitted successfully',
+                'message' => 'Review submitted successfully. It will be visible after admin approval.',
                 'data' => [
                     'id' => $review->id,
                     'rating' => $review->rating,
                     'comment' => $review->comment,
+                    'approval_status' => $review->approval_status,
                     'created_at' => $review->created_at->format('Y-m-d H:i:s'),
                 ]
             ], 201);
@@ -95,7 +97,8 @@ class ReviewController extends Controller
 
         $query = Review::with(['client:id,name', 'booking:id,booking_number,booking_date'])
             ->where('provider_id', $providerId)
-            ->where('is_visible', true);
+            ->where('is_visible', true)
+            ->where('approval_status', 'approved');
 
         // Filter by rating if provided
         if ($request->has('rating')) {
@@ -157,6 +160,8 @@ class ReviewController extends Controller
                     'provider_name' => $review->provider->business_name,
                     'booking_number' => $review->booking->booking_number,
                     'booking_date' => $review->booking->booking_date->format('Y-m-d'),
+                    'approval_status' => $review->approval_status,
+                    'rejection_reason' => $review->rejection_reason,
                     'created_at' => $review->created_at->format('Y-m-d H:i:s'),
                 ];
             }),
@@ -215,6 +220,7 @@ class ReviewController extends Controller
                         'booking_number' => $review->booking->booking_number,
                         'booking_date' => $review->booking->booking_date->format('Y-m-d'),
                         'is_visible' => $review->is_visible,
+                        'approval_status' => $review->approval_status,
                         'created_at' => $review->created_at->format('Y-m-d H:i:s'),
                     ];
                 }),
@@ -234,6 +240,7 @@ class ReviewController extends Controller
     {
         $stats = Review::where('provider_id', $providerId)
             ->where('is_visible', true)
+            ->where('approval_status', 'approved')
             ->selectRaw('AVG(rating) as average, COUNT(*) as total')
             ->first();
 
@@ -250,6 +257,7 @@ class ReviewController extends Controller
     {
         $breakdown = Review::where('provider_id', $providerId)
             ->where('is_visible', true)
+            ->where('approval_status', 'approved')
             ->selectRaw('rating, COUNT(*) as count')
             ->groupBy('rating')
             ->pluck('count', 'rating')

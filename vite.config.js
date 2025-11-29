@@ -23,7 +23,21 @@ export default defineConfig({
                 // Core styles
                 'resources/scss/app.scss',
                 'resources/scss/icons.scss',
-                
+
+                // Vendor CSS
+                'node_modules/nouislider/dist/nouislider.min.css',
+                'node_modules/flatpickr/dist/flatpickr.min.css',
+                'node_modules/choices.js/public/assets/styles/choices.min.css',
+                'node_modules/swiper/swiper-bundle.min.css',
+                'node_modules/quill/dist/quill.bubble.css',
+                'node_modules/quill/dist/quill.snow.css',
+                'node_modules/gridjs/dist/theme/mermaid.min.css',
+                'node_modules/dropzone/dist/dropzone.css',
+
+                // Vendor JS
+                'node_modules/choices.js/public/assets/scripts/choices.min.js',
+                'node_modules/flatpickr/dist/flatpickr.min.js',
+
                 // Core JS
                 'resources/js/app.js',
                 'resources/js/config.js',
@@ -48,7 +62,9 @@ export default defineConfig({
                 'resources/js/pages/coming-soon.js',
                 'resources/js/pages/widgets.js',
                 'resources/js/pages/toasts.js',
-                
+                'resources/js/pages/humanfd.js',
+                'resources/js/pages/datatable.init.js',
+
                 // Component JS - Forms
                 'resources/js/components/form-clipboard.js',
                 'resources/js/components/form-flatepicker.js',

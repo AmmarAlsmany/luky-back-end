@@ -455,12 +455,7 @@
 
 @section('script-bottom')
   @vite([
-    'node_modules/choices.js/public/assets/scripts/choices.min.js',
-    'node_modules/flatpickr/dist/flatpickr.min.js',
-  ])
-
-  @vite([
-    'resources/js/components/form-flatepicker.js',  
+    'resources/js/components/form-flatepicker.js',
     'resources/js/pages/humanfd.js'
   ])
 

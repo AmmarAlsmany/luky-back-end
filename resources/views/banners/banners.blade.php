@@ -20,8 +20,11 @@
   .banner-preview-container {
     min-height: 350px;
   }
-  
+
   #banner-preview {
+    width: 600px;
+    max-width: 100%;
+    margin: 0 auto;
     transition: all 0.3s ease;
   }
   
@@ -580,8 +583,27 @@
     });
   })();
 </script>
+<script>
+  // Pass Laravel translations to JavaScript
+  window.bannerTranslations = {
+    provider_color_reset: "{{ __('banners.provider_color_reset') }}",
+    offer_bg_color_reset: "{{ __('banners.offer_bg_color_reset') }}",
+    offer_text_color_reset: "{{ __('banners.offer_text_color_reset') }}",
+    fill_required_fields: "{{ __('banners.fill_required_fields') }}",
+    end_date_must_be_after: "{{ __('banners.end_date_must_be_after') }}",
+    select_banner_first: "{{ __('banners.select_banner_first') }}",
+    preview_banner_first: "{{ __('banners.preview_banner_first') }}",
+    banner_downloaded: "{{ __('banners.banner_downloaded') }}",
+    download_failed: "{{ __('banners.download_failed') }}",
+    confirm_delete: "{{ __('banners.confirm_delete') }}",
+    ad_deleted: "{{ __('banners.ad_deleted') }}",
+    delete_failed: "{{ __('banners.delete_failed') }}",
+    failed_load_banner: "{{ __('banners.failed_load_banner') }}",
+    editing_banner: "{{ __('banners.editing_banner') }}"
+  };
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="/js/adbanners.js"></script>
+<script src="/js/adbanners.js?v={{ time() }}"></script>
 
 <!-- Preview Modal -->
 <div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">

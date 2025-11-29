@@ -448,5 +448,231 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    // =====================================
+    // REAL-TIME NOTIFICATION SYSTEM
+    // =====================================
+
+    let lastNotificationCheck = new Date().toISOString();
+    let notificationSound = null;
+
+    // Create notification sound (simple beep using Web Audio API)
+    function createNotificationSound() {
+        try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = 800; // Frequency in Hz
+            oscillator.type = 'sine';
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        } catch (e) {
+            console.log('Could not play notification sound:', e);
+        }
+    }
+
+    // Get SweetAlert icon and color based on notification type
+    function getNotificationStyle(type) {
+        const styles = {
+            'booking_request': { icon: 'info', iconColor: '#3b82f6' },
+            'booking_accepted': { icon: 'success', iconColor: '#22c55e' },
+            'booking_rejected': { icon: 'error', iconColor: '#ef4444' },
+            'booking_cancelled': { icon: 'warning', iconColor: '#f59e0b' },
+            'booking_completed': { icon: 'success', iconColor: '#10b981' },
+            'payment_success': { icon: 'success', iconColor: '#22c55e' },
+            'payment_completed': { icon: 'success', iconColor: '#22c55e' },
+            'payment_failed': { icon: 'error', iconColor: '#ef4444' },
+            'payment_timeout': { icon: 'warning', iconColor: '#f59e0b' },
+            'payment_reminder': { icon: 'info', iconColor: '#3b82f6' },
+            'new_review': { icon: 'info', iconColor: '#8b5cf6' },
+            'provider_approved': { icon: 'success', iconColor: '#22c55e' },
+            'provider_rejected': { icon: 'error', iconColor: '#ef4444' },
+            'default': { icon: 'info', iconColor: '#3b82f6' }
+        };
+
+        return styles[type] || styles['default'];
+    }
+
+    // Show SweetAlert notification
+    function showNotificationAlert(notification) {
+        const style = getNotificationStyle(notification.type);
+
+        Swal.fire({
+            title: notification.title,
+            html: notification.body,
+            icon: style.icon,
+            iconColor: style.iconColor,
+            position: 'top-end',
+            toast: true,
+            timer: 6000,
+            timerProgressBar: true,
+            showConfirmButton: false,
+            showCloseButton: true,
+            customClass: {
+                popup: 'swal-notification-popup',
+                title: 'swal-notification-title',
+                htmlContainer: 'swal-notification-body'
+            },
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer);
+                toast.addEventListener('mouseleave', Swal.resumeTimer);
+            }
+        });
+    }
+
+    // Request browser notification permission
+    function requestNotificationPermission() {
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+    }
+
+    // Show browser notification
+    function showBrowserNotification(notification) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+            const browserNotif = new Notification(notification.title, {
+                body: notification.body,
+                icon: '/favicon.ico',
+                tag: 'notification-' + notification.id,
+                requireInteraction: false
+            });
+
+            browserNotif.onclick = function() {
+                window.focus();
+                browserNotif.close();
+            };
+
+            setTimeout(() => browserNotif.close(), 8000);
+        }
+    }
+
+    // Update notification badge and dropdown
+    function updateNotificationUI(data) {
+        // Update badge count
+        const badge = document.querySelector('.topbar-badge');
+        if (data.total_unread > 0) {
+            if (badge) {
+                badge.textContent = data.total_unread > 99 ? '99+' : data.total_unread;
+                badge.style.display = '';
+            } else {
+                // Create badge if it doesn't exist
+                const bellButton = document.getElementById('page-header-notifications-dropdown');
+                const badgeHtml = `
+                    <span class="position-absolute topbar-badge fs-10 translate-middle badge bg-danger rounded-pill">
+                        ${data.total_unread > 99 ? '99+' : data.total_unread}
+                        <span class="visually-hidden">unread notifications</span>
+                    </span>
+                `;
+                bellButton.insertAdjacentHTML('beforeend', badgeHtml);
+            }
+        } else {
+            if (badge) {
+                badge.style.display = 'none';
+            }
+        }
+    }
+
+    // Check for new notifications
+    function checkNewNotifications() {
+        fetch('{{ route('notifications.checkNew') }}?last_check=' + encodeURIComponent(lastNotificationCheck), {
+            method: 'GET',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.has_new) {
+                console.log('📬 New notifications received:', data.count);
+
+                // Play sound
+                createNotificationSound();
+
+                // Show each notification with SweetAlert
+                data.notifications.forEach((notification, index) => {
+                    setTimeout(() => {
+                        showNotificationAlert(notification);
+                        showBrowserNotification(notification);
+                    }, index * 1000); // Stagger alerts by 1 second each
+                });
+
+                // Update UI
+                updateNotificationUI(data);
+
+                // Reload page to update dropdown after all notifications shown
+                setTimeout(() => {
+                    window.location.reload();
+                }, (data.notifications.length * 1000) + 7000);
+            }
+
+            // Update last check timestamp
+            if (data.timestamp) {
+                lastNotificationCheck = data.timestamp;
+            }
+        })
+        .catch(error => {
+            console.error('Error checking notifications:', error);
+        });
+    }
+
+    // Start polling every 30 seconds
+    setInterval(checkNewNotifications, 30000);
+
+    // Initial check after 5 seconds
+    setTimeout(checkNewNotifications, 5000);
+
+    // Request notification permission on page load
+    requestNotificationPermission();
+
+    console.log('✅ Real-time notification system initialized (polling every 30 seconds)');
 });
 </script>
+
+<!-- Custom SweetAlert Notification Styles -->
+<style>
+.swal-notification-popup {
+    min-width: 350px !important;
+    max-width: 450px !important;
+    font-size: 0.95rem !important;
+}
+
+.swal-notification-title {
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.swal-notification-body {
+    font-size: 0.9rem !important;
+    line-height: 1.5 !important;
+    white-space: pre-line !important;
+}
+
+.swal2-toast.swal2-show {
+    animation: slideInRight 0.3s ease-out !important;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.swal2-toast .swal2-timer-progress-bar {
+    background: rgba(0, 0, 0, 0.2) !important;
+}
+</style>

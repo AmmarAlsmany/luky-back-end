@@ -97,4 +97,25 @@ return [
     'search_providers' => 'البحث عن مقدمي الخدمة...',
     'click_to_select' => 'انقر للاختيار',
     'press_enter_to_add' => 'اضغط Enter للإضافة',
+
+    // Toast Messages
+    'provider_color_reset' => 'تم إعادة تعيين لون مقدم الخدمة إلى الأبيض',
+    'offer_bg_color_reset' => 'تم إعادة تعيين لون خلفية العرض إلى الأصفر',
+    'offer_text_color_reset' => 'تم إعادة تعيين لون نص العرض إلى الأسود',
+    'fill_required_fields' => 'يرجى ملء جميع الحقول المطلوبة واختيار خلفية اللافتة.',
+    'end_date_must_be_after' => 'يجب أن يكون تاريخ الانتهاء بعد تاريخ البدء.',
+    'select_banner_first' => 'يرجى اختيار خلفية اللافتة أولاً.',
+    'preview_banner_first' => 'يرجى معاينة اللافتة أولاً.',
+    'banner_downloaded' => 'تم تحميل اللافتة بنجاح!',
+    'download_failed' => 'فشل التحميل. يرجى المحاولة مرة أخرى.',
+    'confirm_delete' => 'هل أنت متأكد من حذف هذا الإعلان؟ لا يمكن التراجع عن هذا الإجراء.',
+    'ad_deleted' => 'تم حذف الإعلان بنجاح!',
+    'delete_failed' => 'فشل حذف الإعلان. يرجى المحاولة مرة أخرى.',
+    'failed_load_banner' => 'فشل تحميل بيانات اللافتة',
+    'editing_banner' => 'تعديل اللافتة',
+
+    // Status badges
+    'active' => 'نشط',
+    'upcoming' => 'قادم',
+    'expired' => 'منتهي',
 ];

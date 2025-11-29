@@ -45,6 +45,10 @@ class Service extends Model implements HasMedia
         'gallery' => 'array',  // Cast JSON to array
     ];
 
+    protected $appends = [
+        'images',
+    ];
+
     public function provider()
     {
         return $this->belongsTo(ServiceProvider::class, 'provider_id');

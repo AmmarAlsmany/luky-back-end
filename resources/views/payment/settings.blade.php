@@ -333,6 +333,13 @@
                                         <small class="text-muted">Unpaid invoices auto-cancel after this time.</small>
                                     </div>
                                     <div class="col-6 col-md-3">
+                                        <label class="form-label small mb-1">Payment Timeout (mins)</label>
+                                        <input type="number" class="form-control" name="payment_timeout_minutes" id="payment_timeout_minutes"
+                                            value="{{ \App\Models\AppSetting::get('payment_timeout_minutes', 10) }}"
+                                            placeholder="e.g. 10" min="1" max="60">
+                                        <small class="text-muted">Time limit for client to complete payment.</small>
+                                    </div>
+                                    <div class="col-6 col-md-3">
                                         <label class="form-label small mb-1">Language</label>
                                         <select class="form-select" name="myfatoorah[language]">
                                             <option value="En" selected>English</option>
@@ -976,6 +983,7 @@ Currency: ${curr}`);
                 min_amount: document.querySelector('input[name="myfatoorah[min_amount]"]').value || null,
                 max_amount: document.querySelector('input[name="myfatoorah[max_amount]"]').value || null,
                 invoice_expiry: document.querySelector('input[name="myfatoorah[invoice_expiry]"]').value || null,
+                payment_timeout_minutes: document.getElementById('payment_timeout_minutes').value || 10,
                 language: document.querySelector('select[name="myfatoorah[language]"]').value,
                 descriptor: document.querySelector('input[name="myfatoorah[descriptor]"]').value || '',
                 notes: document.querySelector('input[name="myfatoorah[notes]"]').value || '',

@@ -143,6 +143,9 @@ class ServiceController extends Controller
             'salon_service' => 'sometimes|boolean',
             'trending' => 'sometimes|boolean',
             'sort_by' => 'sometimes|in:price_asc,price_desc,rating,distance',
+            'latitude' => 'sometimes|numeric|between:-90,90',
+            'longitude' => 'sometimes|numeric|between:-180,180',
+            'max_distance' => 'sometimes|numeric|min:0|max:100',
         ]);
 
         $searchTerm = $request->input('query');
@@ -172,6 +175,29 @@ class ServiceController extends Controller
             $providersQuery->where('business_type', $businessType);
         }
 
+        // Location-based distance calculation (if coordinates provided)
+        if ($request->has(['latitude', 'longitude'])) {
+            $lat = $request->latitude;
+            $lng = $request->longitude;
+            $maxDistance = $request->max_distance;
+
+            $providersQuery->selectRaw("
+                service_providers.*,
+                (6371 * acos(cos(radians(?)) * cos(radians(latitude)) *
+                cos(radians(longitude) - radians(?)) + sin(radians(?)) *
+                sin(radians(latitude)))) AS distance
+            ", [$lat, $lng, $lat]);
+
+            // Apply max distance filter if specified using whereRaw
+            if ($request->has('max_distance')) {
+                $providersQuery->whereRaw("
+                    (6371 * acos(cos(radians(?)) * cos(radians(latitude)) *
+                    cos(radians(longitude) - radians(?)) + sin(radians(?)) *
+                    sin(radians(latitude)))) <= ?
+                ", [$lat, $lng, $lat, $maxDistance]);
+            }
+        }
+
         // Category filter
         if ($request->has('category_id')) {
             $providersQuery->whereHas('services', function ($q) use ($request) {
@@ -196,21 +222,35 @@ class ServiceController extends Controller
             });
         }
 
-        // Home service filter
-        if ($request->has('home_service') && $request->home_service) {
-            $providersQuery->whereHas('services', function ($q) {
-                $q->where('available_at_home', true);
-            });
-        }
+        // Service location filters
+        if ($request->has('home_service') || $request->has('salon_service')) {
+            $homeService = $request->boolean('home_service', false);
+            $salonService = $request->boolean('salon_service', false);
 
-        // Salon service filter (services NOT available at home = available at salon/clinic location)
-        if ($request->has('salon_service') && $request->salon_service) {
-            $providersQuery->whereHas('services', function ($q) {
-                $q->where(function($query) {
-                    $query->where('available_at_home', false)
-                          ->orWhereNull('available_at_home');
+            if ($homeService && $salonService) {
+                // Both enabled: Provider must have at least one home service AND at least one salon service
+                $providersQuery->whereHas('services', function ($q) {
+                    $q->where('available_at_home', true);
+                })->whereHas('services', function ($q) {
+                    $q->where(function($query) {
+                        $query->where('available_at_home', false)
+                              ->orWhereNull('available_at_home');
+                    });
                 });
-            });
+            } elseif ($homeService) {
+                // Only home service enabled
+                $providersQuery->whereHas('services', function ($q) {
+                    $q->where('available_at_home', true);
+                });
+            } elseif ($salonService) {
+                // Only salon service enabled
+                $providersQuery->whereHas('services', function ($q) {
+                    $q->where(function($query) {
+                        $query->where('available_at_home', false)
+                              ->orWhereNull('available_at_home');
+                    });
+                });
+            }
         }
 
         // Trending filter (providers with most bookings in last 30 days)
@@ -242,15 +282,8 @@ class ServiceController extends Controller
             case 'distance':
                 // Distance sorting requires coordinates
                 if ($request->has(['latitude', 'longitude'])) {
-                    $lat = $request->latitude;
-                    $lng = $request->longitude;
-                    $providersQuery->selectRaw("
-                        *,
-                        (6371 * acos(cos(radians(?)) * cos(radians(latitude)) *
-                        cos(radians(longitude) - radians(?)) + sin(radians(?)) *
-                        sin(radians(latitude)))) AS distance
-                    ", [$lat, $lng, $lat])
-                        ->orderBy('distance');
+                    // Distance already calculated above, just apply ordering
+                    $providersQuery->orderBy('distance');
                 } else {
                     $providersQuery->orderByDesc('average_rating');
                 }
@@ -283,6 +316,9 @@ class ServiceController extends Controller
                 'salon_service' => $request->salon_service,
                 'trending' => $request->trending,
                 'sort_by' => $request->sort_by,
+                'latitude' => $request->latitude,
+                'longitude' => $request->longitude,
+                'max_distance' => $request->max_distance,
             ],
             'pagination' => [
                 'current_page' => $providers->currentPage(),

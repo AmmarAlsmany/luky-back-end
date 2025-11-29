@@ -9,7 +9,8 @@
       "Read(//a/Projects/luky-dashboard/**)",
       "Bash(curl:*)",
       "Bash(mkdir:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(php:*)"
     ],
     "deny": [],
     "ask": []

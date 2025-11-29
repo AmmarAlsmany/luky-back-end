@@ -41,12 +41,23 @@ class ReviewController extends Controller
         $providers = $query->orderByDesc('avg_rating')
             ->paginate(20);
 
-        // Get latest review date for each provider
+        // Get latest review date and approval statistics for each provider
         foreach ($providers as $provider) {
             $latestReview = $provider->receivedReviews()
                 ->orderByDesc('created_at')
                 ->first();
             $provider->latest_review = $latestReview;
+
+            // Get approval status counts
+            $provider->pending_reviews_count = $provider->receivedReviews()
+                ->where('approval_status', 'pending')
+                ->count();
+            $provider->approved_reviews_count = $provider->receivedReviews()
+                ->where('approval_status', 'approved')
+                ->count();
+            $provider->rejected_reviews_count = $provider->receivedReviews()
+                ->where('approval_status', 'rejected')
+                ->count();
         }
 
         // Statistics
@@ -157,6 +168,50 @@ class ReviewController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Response saved successfully',
+        ]);
+    }
+
+    /**
+     * Approve a review
+     */
+    public function approve($id)
+    {
+        $review = Review::findOrFail($id);
+
+        $review->update([
+            'approval_status' => 'approved',
+            'approved_by' => auth()->id(),
+            'approved_at' => now(),
+            'rejection_reason' => null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('reviews.review_approved_successfully'),
+        ]);
+    }
+
+    /**
+     * Reject a review
+     */
+    public function reject(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'reason' => 'required|string|max:500',
+        ]);
+
+        $review = Review::findOrFail($id);
+
+        $review->update([
+            'approval_status' => 'rejected',
+            'approved_by' => auth()->id(),
+            'approved_at' => now(),
+            'rejection_reason' => $validated['reason'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('reviews.review_rejected_successfully'),
         ]);
     }
 }

@@ -67,17 +67,44 @@ return [
     'flag' => 'تحذير',
     'reply' => 'الرد',
     'delete' => 'حذف',
-    
+
     // Response Modal
     'add_admin_response' => 'إضافة رد المسؤول',
     'enter_your_response' => 'أدخل ردك...',
     'cancel' => 'إلغاء',
     'save_response' => 'حفظ الرد',
-    
+
     // Confirmation
     'delete_review_confirm' => 'هل أنت متأكد من حذف هذا التقييم؟',
-    
+
     // Messages
     'success' => 'نجح',
     'error' => 'خطأ',
+
+    // Approval System
+    'pending_approval' => 'في انتظار الموافقة',
+    'approved' => 'تمت الموافقة',
+    'rejected' => 'مرفوض',
+    'approve' => 'موافقة',
+    'reject' => 'رفض',
+    'approve_review' => 'الموافقة على التقييم',
+    'reject_review' => 'رفض التقييم',
+    'approve_review_confirm' => 'هل أنت متأكد من الموافقة على هذا التقييم؟',
+    'rejection_reason' => 'سبب الرفض',
+    'rejection_reason_prompt' => 'يرجى تقديم سبب لرفض هذا التقييم (لغة مسيئة، محتوى غير لائق، إلخ)',
+    'enter_rejection_reason' => 'أدخل سبب الرفض...',
+    'confirm_reject' => 'تأكيد الرفض',
+    'rejection_reason_required' => 'يرجى إدخال سبب الرفض',
+    'review_approved_successfully' => 'تمت الموافقة على التقييم بنجاح',
+    'review_rejected_successfully' => 'تم رفض التقييم بنجاح',
+    'error_approving' => 'خطأ في الموافقة على التقييم',
+    'error_rejecting' => 'خطأ في رفض التقييم',
+    'toggle_flag' => 'تبديل العلامة',
+    'add_response' => 'إضافة رد',
+    'delete_review' => 'حذف التقييم',
+    'flag' => 'تعليم',
+    'respond' => 'رد',
+    'delete' => 'حذف',
+    'pending' => 'قيد الانتظار',
+    'no_reviews' => 'لا توجد تقييمات',
 ];

@@ -76,8 +76,35 @@ return [
     
     // Confirmation
     'delete_review_confirm' => 'Are you sure you want to delete this review?',
-    
+
     // Messages
     'success' => 'Success',
     'error' => 'Error',
+
+    // Approval System
+    'pending_approval' => 'Pending Approval',
+    'approved' => 'Approved',
+    'rejected' => 'Rejected',
+    'approve' => 'Approve',
+    'reject' => 'Reject',
+    'approve_review' => 'Approve Review',
+    'reject_review' => 'Reject Review',
+    'approve_review_confirm' => 'Are you sure you want to approve this review?',
+    'rejection_reason' => 'Rejection Reason',
+    'rejection_reason_prompt' => 'Please provide a reason for rejecting this review (offensive language, inappropriate content, etc.)',
+    'enter_rejection_reason' => 'Enter reason for rejection...',
+    'confirm_reject' => 'Confirm Rejection',
+    'rejection_reason_required' => 'Please enter a rejection reason',
+    'review_approved_successfully' => 'Review approved successfully',
+    'review_rejected_successfully' => 'Review rejected successfully',
+    'error_approving' => 'Error approving review',
+    'error_rejecting' => 'Error rejecting review',
+    'toggle_flag' => 'Toggle Flag',
+    'add_response' => 'Add Response',
+    'delete_review' => 'Delete Review',
+    'flag' => 'Flag',
+    'respond' => 'Respond',
+    'delete' => 'Delete',
+    'pending' => 'Pending',
+    'no_reviews' => 'No reviews',
 ];

@@ -22,12 +22,15 @@ class Payment extends Model
         'platform_commission',
         'paid_at',
         'failure_reason',
+        'refunded_at',
+        'refund_reason',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'gateway_response' => 'array',
         'paid_at' => 'datetime',
+        'refunded_at' => 'datetime',
     ];
 
     /**
@@ -63,6 +66,14 @@ class Payment extends Model
     }
 
     /**
+     * Check if payment has been refunded
+     */
+    public function isRefunded(): bool
+    {
+        return $this->status === 'refunded';
+    }
+
+    /**
      * Scope for completed payments
      */
     public function scopeCompleted($query)
@@ -84,5 +95,13 @@ class Payment extends Model
     public function scopeFailed($query)
     {
         return $query->where('status', 'failed');
+    }
+
+    /**
+     * Scope for refunded payments
+     */
+    public function scopeRefunded($query)
+    {
+        return $query->where('status', 'refunded');
     }
 }

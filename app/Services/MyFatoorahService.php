@@ -9,23 +9,17 @@ class MyFatoorahService
 {
     protected ?string $apiKey;
     protected ?string $apiUrl;
-    protected ?string $successUrl;
-    protected ?string $errorUrl;
 
     public function __construct()
     {
         $this->apiKey = config('services.myfatoorah.api_key');
         $this->apiUrl = config('services.myfatoorah.api_url');
-        $this->successUrl = config('services.myfatoorah.success_url');
-        $this->errorUrl = config('services.myfatoorah.error_url');
-        
+
         // Log warning if configuration is missing
         if (!$this->apiKey || !$this->apiUrl) {
             Log::warning('MyFatoorah configuration is incomplete', [
                 'has_api_key' => !empty($this->apiKey),
                 'has_api_url' => !empty($this->apiUrl),
-                'has_success_url' => !empty($this->successUrl),
-                'has_error_url' => !empty($this->errorUrl),
             ]);
         }
     }
@@ -89,14 +83,15 @@ class MyFatoorahService
                 'sanitized_email' => $customerEmail,
             ]);
 
+            // Callback URL for when user completes/cancels payment (works for test & live)
+            $callbackUrl = url('/api/v1/payments/callback');
+
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $this->apiKey,
                 'Content-Type' => 'application/json',
             ])->post($this->apiUrl . '/v2/ExecutePayment', [
                 'PaymentMethodId' => $data['payment_method_id'],
                 'InvoiceValue' => $data['amount'],
-                'CallBackUrl' => $this->successUrl,
-                'ErrorUrl' => $this->errorUrl,
                 'CustomerName' => $data['customer_name'],
                 'CustomerMobile' => $customerMobile,
                 'CustomerEmail' => $customerEmail,
@@ -108,6 +103,8 @@ class MyFatoorahService
                     'booking_id' => $data['booking_id'],
                     'client_id' => $data['client_id'],
                 ]),
+                'CallBackUrl' => $callbackUrl, // Success callback
+                'ErrorUrl' => $callbackUrl,    // Error callback (same handler)
             ]);
 
             if ($response->successful()) {
@@ -357,8 +354,6 @@ class MyFatoorahService
                 'MobileCountryCode' => $data['mobile_country_code'] ?? '+966',
                 'CustomerMobile' => $this->sanitizePhoneNumber($data['customer_mobile']),
                 'CustomerEmail' => $this->sanitizeEmail($data['customer_email'] ?? null),
-                'CallBackUrl' => $this->successUrl,
-                'ErrorUrl' => $this->errorUrl,
                 'Language' => $data['language'] ?? 'ar',
                 'CustomerReference' => $data['reference'] ?? null,
             ];

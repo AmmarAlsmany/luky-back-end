@@ -211,9 +211,16 @@ class PaymentSettingsController extends Controller
     {
         $settings = DB::table('payment_settings')->first();
 
+        // Add payment timeout from app_settings
+        $paymentTimeout = \App\Models\AppSetting::get('payment_timeout_minutes', 10);
+
+        // Convert settings to array and add timeout
+        $settingsArray = $settings ? (array) $settings : [];
+        $settingsArray['payment_timeout_minutes'] = (int) $paymentTimeout;
+
         return response()->json([
             'success' => true,
-            'data' => ['settings' => $settings],
+            'data' => ['settings' => $settingsArray],
         ]);
     }
 
@@ -231,6 +238,7 @@ class PaymentSettingsController extends Controller
             'payment_methods' => 'sometimes|json',
             'auto_payout' => 'boolean',
             'payout_frequency' => 'sometimes|in:daily,weekly,monthly',
+            'payment_timeout_minutes' => 'sometimes|integer|min:1|max:60',
         ]);
 
         if ($validator->fails()) {
@@ -239,6 +247,11 @@ class PaymentSettingsController extends Controller
                 'message' => 'Validation error',
                 'errors' => $validator->errors(),
             ], 422);
+        }
+
+        // Update payment_timeout_minutes in app_settings if provided
+        if ($request->has('payment_timeout_minutes')) {
+            \App\Models\AppSetting::set('payment_timeout_minutes', $request->payment_timeout_minutes);
         }
 
         $settings = DB::table('payment_settings')->first();

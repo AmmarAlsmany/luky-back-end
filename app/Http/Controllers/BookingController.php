@@ -313,9 +313,41 @@ class BookingController extends Controller
             'status' => 'required|in:pending,confirmed,completed,cancelled,rejected',
             'reason' => 'nullable|string|max:500',
             'cancelled_by' => 'nullable|in:client,provider,admin',
+            'process_refund' => 'nullable|boolean', // Flag to confirm refund processing
         ]);
 
-        $booking = Booking::with(['provider', 'client'])->findOrFail($id);
+        $booking = Booking::with(['provider', 'client', 'payment'])->findOrFail($id);
+
+        // CRITICAL: Prevent cancellation of paid bookings without refund confirmation
+        if ($validated['status'] === 'cancelled' && $booking->payment_status === 'paid') {
+            // Check if admin confirmed they want to process the refund
+            if (!($validated['process_refund'] ?? false)) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'This booking has been paid. Cancelling requires processing a refund.',
+                        'requires_refund' => true,
+                        'payment_info' => [
+                            'amount_paid' => (float) $booking->total_amount,
+                            'payment_method' => $booking->payment_method,
+                            'payment_reference' => $booking->payment_reference,
+                        ],
+                    ], 400);
+                }
+
+                return redirect()->back()->with('error', 'This booking has been paid. You must process a refund before cancelling.');
+            }
+
+            // If refund confirmed, update payment status to refunded
+            // TODO: Integrate with payment gateway API to process actual refund
+            if ($booking->payment) {
+                $booking->payment->update([
+                    'status' => 'refunded',
+                    'refunded_at' => now(),
+                    'refund_reason' => $validated['reason'] ?? 'Booking cancelled by admin',
+                ]);
+            }
+        }
 
         DB::beginTransaction();
         try {
@@ -334,6 +366,11 @@ class BookingController extends Controller
                     $updateData['cancelled_at'] = now();
                     $updateData['cancellation_reason'] = $validated['reason'] ?? null;
                     $updateData['cancelled_by'] = $validated['cancelled_by'] ?? 'admin';
+
+                    // If booking was paid, mark as refunded
+                    if ($booking->payment_status === 'paid') {
+                        $updateData['payment_status'] = 'refunded';
+                    }
                     break;
             }
 
@@ -351,6 +388,11 @@ class BookingController extends Controller
                     break;
                 case 'cancelled':
                     $notificationService->sendBookingCancelled($booking, 'client');
+
+                    // If booking was paid and refunded, notify client about refund
+                    if ($booking->payment_status === 'refunded' && $booking->total_amount > 0) {
+                        $notificationService->sendRefundProcessed($booking, $booking->total_amount, 0);
+                    }
                     break;
                 case 'completed':
                     $notificationService->sendBookingCompleted($booking);
@@ -358,13 +400,28 @@ class BookingController extends Controller
             }
 
             if ($request->expectsJson()) {
+                $message = 'Booking status updated successfully';
+                $additionalData = [];
+
+                // Add refund info if applicable
+                if ($validated['status'] === 'cancelled' && $booking->payment_status === 'refunded') {
+                    $message .= '. Refund of ' . $booking->total_amount . ' SAR will be processed.';
+                    $additionalData['refund_amount'] = (float) $booking->total_amount;
+                }
+
                 return response()->json([
                     'success' => true,
-                    'message' => 'Booking status updated successfully',
+                    'message' => $message,
+                    'data' => $additionalData,
                 ]);
             }
 
-            return redirect()->back()->with('success', 'Booking status updated successfully');
+            $successMessage = 'Booking status updated successfully';
+            if ($validated['status'] === 'cancelled' && $booking->payment_status === 'refunded') {
+                $successMessage .= '. Refund of ' . $booking->total_amount . ' SAR will be processed.';
+            }
+
+            return redirect()->back()->with('success', $successMessage);
 
         } catch (\Exception $e) {
             DB::rollBack();

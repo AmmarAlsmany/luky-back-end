@@ -143,6 +143,8 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/reviews/provider/{id}', [ReviewController::class, 'show'])->name('reviews.show')->where('id', '[0-9]+')->middleware('permission:view_reviews');
     Route::post('/reviews/{id}/toggle-flag', [ReviewController::class, 'toggleFlag'])->name('reviews.toggleFlag')->where('id', '[0-9]+')->middleware('permission:hide_reviews');
     Route::post('/reviews/{id}/response', [ReviewController::class, 'updateResponse'])->name('reviews.updateResponse')->where('id', '[0-9]+')->middleware('permission:view_reviews');
+    Route::post('/reviews/{id}/approve', [ReviewController::class, 'approve'])->name('reviews.approve')->where('id', '[0-9]+')->middleware('permission:view_reviews');
+    Route::post('/reviews/{id}/reject', [ReviewController::class, 'reject'])->name('reviews.reject')->where('id', '[0-9]+')->middleware('permission:view_reviews');
     Route::delete('/reviews/{id}', [ReviewController::class, 'destroy'])->name('reviews.destroy')->where('id', '[0-9]+')->middleware('permission:delete_reviews');
 
     // Notifications routes
@@ -152,6 +154,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/notifications/users/{audience}', [NotificationController::class, 'getUsersByAudience'])->name('notifications.getUsersByAudience')->middleware('permission:send_notifications');
     Route::post('/notifications/{id}/mark-read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead')->where('id', '[0-9]+')->middleware('permission:view_notifications');
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead')->middleware('permission:view_notifications');
+    Route::get('/notifications/check-new', [NotificationController::class, 'checkNew'])->name('notifications.checkNew');
 
     // Payment Management routes
     Route::get('/payments/transactions', [PaymentController::class, 'transactions'])->name('payments.transactions')->middleware('permission:view_payments');
@@ -175,6 +178,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/banners/banners', [BannerController::class, 'index'])->name('banners.index');
         Route::post('/banners/store', [BannerController::class, 'store'])->name('banners.store');
         Route::get('/banners/{id}', [BannerController::class, 'show'])->name('banners.show')->where('id', '[0-9]+');
+        Route::put('/banners/{id}', [BannerController::class, 'update'])->name('banners.update')->where('id', '[0-9]+');
         Route::delete('/banners/{id}', [BannerController::class, 'destroy'])->name('banners.destroy')->where('id', '[0-9]+');
     });
 

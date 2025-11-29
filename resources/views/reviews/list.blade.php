@@ -136,15 +136,30 @@
                   @endif
                 </td>
                 <td>
-                  @if($provider->is_active)
-                    <span class="badge bg-success-subtle text-success">{{ __('reviews.active') }}</span>
-                  @else
-                    <span class="badge bg-danger-subtle text-danger">{{ __('reviews.inactive') }}</span>
-                  @endif
+                  <div class="d-flex flex-column gap-1">
+                    @if($provider->pending_reviews_count > 0)
+                      <span class="badge bg-warning-subtle text-warning">
+                        {{ $provider->pending_reviews_count }} {{ __('reviews.pending') }}
+                      </span>
+                    @endif
+                    @if($provider->approved_reviews_count > 0)
+                      <span class="badge bg-success-subtle text-success">
+                        {{ $provider->approved_reviews_count }} {{ __('reviews.approved') }}
+                      </span>
+                    @endif
+                    @if($provider->rejected_reviews_count > 0)
+                      <span class="badge bg-danger-subtle text-danger">
+                        {{ $provider->rejected_reviews_count }} {{ __('reviews.rejected') }}
+                      </span>
+                    @endif
+                    @if($provider->pending_reviews_count == 0 && $provider->approved_reviews_count == 0 && $provider->rejected_reviews_count == 0)
+                      <span class="text-muted small">{{ __('reviews.no_reviews') }}</span>
+                    @endif
+                  </div>
                 </td>
                 <td>
                   <div class="d-flex gap-2">
-                    <a href="{{ route('reviews.show', $provider->id) }}" class="btn btn-soft-primary btn-sm" title="{{ __('reviews.view_reviews') }}">
+                    <a href="{{ route('reviews.show', $provider->providerProfile->id ?? $provider->id) }}" class="btn btn-soft-primary btn-sm" title="{{ __('reviews.view_reviews') }}">
                       <iconify-icon icon="solar:eye-bold" class="fs-18"></iconify-icon>
                     </a>
                   </div>
@@ -186,21 +201,39 @@
 @section('script-bottom')
   @vite(['node_modules/choices.js/public/assets/scripts/choices.min.js'])
   <script>
-    // Initialize Choices for select dropdowns
-    document.querySelectorAll('select[data-choices]').forEach(function (el) {
-      new Choices(el, {
-        allowHTML: false,
-        shouldSort: false,
-        searchEnabled: el.getAttribute('data-choices-search-true') !== null
-      });
-    });
+    document.addEventListener('DOMContentLoaded', function() {
+      // Wait for Choices to be available
+      function initializeChoices() {
+        if (typeof Choices === 'undefined') {
+          console.log('Waiting for Choices.js to load...');
+          setTimeout(initializeChoices, 100);
+          return;
+        }
 
-    // Select all checkboxes
-    document.getElementById('checkAll')?.addEventListener('change', function() {
-      const checkboxes = document.querySelectorAll('tbody input[type="checkbox"]');
-      checkboxes.forEach(checkbox => {
-        checkbox.checked = this.checked;
-      });
+        // Initialize Choices for select dropdowns
+        document.querySelectorAll('select[data-choices]').forEach(function (el) {
+          new Choices(el, {
+            allowHTML: false,
+            shouldSort: false,
+            searchEnabled: el.getAttribute('data-choices-search-true') !== null
+          });
+        });
+        console.log('Choices.js initialized');
+      }
+
+      // Start initialization
+      initializeChoices();
+
+      // Select all checkboxes
+      const checkAllBtn = document.getElementById('checkAll');
+      if (checkAllBtn) {
+        checkAllBtn.addEventListener('change', function() {
+          const checkboxes = document.querySelectorAll('tbody input[type="checkbox"]');
+          checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+          });
+        });
+      }
     });
   </script>
 @endsection

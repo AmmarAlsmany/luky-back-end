@@ -23,10 +23,18 @@ class DashboardController extends Controller
         $endDate = now();
 
         // Get KPIs
+        $totalRevenue = Booking::where('payment_status', 'paid')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->sum('total_amount');
+
+        $totalCommission = Booking::where('payment_status', 'paid')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->sum('commission_amount');
+
         $kpis = [
-            'total_revenue' => Payment::where('status', 'completed')
-                ->whereBetween('created_at', [$startDate, $endDate])
-                ->sum('amount'),
+            'total_revenue' => $totalRevenue,
+            'total_commission' => $totalCommission,
+            'provider_earnings' => $totalRevenue - $totalCommission,
             'total_bookings' => Booking::whereBetween('created_at', [$startDate, $endDate])->count(),
             'total_clients' => User::whereHas('roles', fn($q) => $q->where('name', 'client'))
                 ->whereBetween('created_at', [$startDate, $endDate])
@@ -34,6 +42,9 @@ class DashboardController extends Controller
             'total_providers' => ServiceProvider::whereBetween('created_at', [$startDate, $endDate])->count(),
             'active_bookings' => Booking::whereIn('status', ['pending', 'confirmed', 'in_progress'])->count(),
             'completed_bookings' => Booking::where('status', 'completed')
+                ->whereBetween('created_at', [$startDate, $endDate])
+                ->count(),
+            'paid_bookings' => Booking::where('payment_status', 'paid')
                 ->whereBetween('created_at', [$startDate, $endDate])
                 ->count(),
             'cancelled_bookings' => Booking::where('status', 'cancelled')
@@ -46,9 +57,9 @@ class DashboardController extends Controller
         $previousPeriodStart = $this->getPeriodStartDate($period, 1);
         $previousPeriodEnd = $startDate;
 
-        $previousRevenue = Payment::where('status', 'completed')
+        $previousRevenue = Booking::where('payment_status', 'paid')
             ->whereBetween('created_at', [$previousPeriodStart, $previousPeriodEnd])
-            ->sum('amount');
+            ->sum('total_amount');
 
         $previousBookings = Booking::whereBetween('created_at', [$previousPeriodStart, $previousPeriodEnd])->count();
 
@@ -86,11 +97,13 @@ class DashboardController extends Controller
 
         $dateFormat = $period === 'day' ? 'YYYY-MM-DD' : 'YYYY-MM';
 
-        $data = Payment::where('status', 'completed')
+        $data = Booking::where('payment_status', 'paid')
             ->whereBetween('created_at', [$startDate, $endDate])
             ->select(
                 DB::raw("TO_CHAR(created_at, '{$dateFormat}') as date"),
-                DB::raw('SUM(amount) as revenue'),
+                DB::raw('SUM(total_amount) as revenue'),
+                DB::raw('SUM(commission_amount) as commission'),
+                DB::raw('SUM(total_amount - COALESCE(commission_amount, 0)) as provider_earnings'),
                 DB::raw('COUNT(*) as transactions')
             )
             ->groupBy('date')
@@ -332,13 +345,38 @@ class DashboardController extends Controller
                 'cancelled' => Booking::where('status', 'cancelled')->count(),
             ],
             'revenue' => [
-                'total' => Payment::where('status', 'completed')->sum('amount'),
-                'this_month' => Payment::where('status', 'completed')
+                'total' => Booking::where('payment_status', 'paid')->sum('total_amount'),
+                'this_month' => Booking::where('payment_status', 'paid')
                     ->whereMonth('created_at', now()->month)
-                    ->sum('amount'),
-                'today' => Payment::where('status', 'completed')
+                    ->sum('total_amount'),
+                'today' => Booking::where('payment_status', 'paid')
                     ->whereDate('created_at', today())
-                    ->sum('amount'),
+                    ->sum('total_amount'),
+            ],
+            'commission' => [
+                'total' => Booking::where('payment_status', 'paid')->sum('commission_amount'),
+                'this_month' => Booking::where('payment_status', 'paid')
+                    ->whereMonth('created_at', now()->month)
+                    ->sum('commission_amount'),
+                'today' => Booking::where('payment_status', 'paid')
+                    ->whereDate('created_at', today())
+                    ->sum('commission_amount'),
+            ],
+            'provider_earnings' => [
+                'total' => Booking::where('payment_status', 'paid')->sum('total_amount') -
+                          Booking::where('payment_status', 'paid')->sum('commission_amount'),
+                'this_month' => Booking::where('payment_status', 'paid')
+                    ->whereMonth('created_at', now()->month)
+                    ->sum('total_amount') -
+                    Booking::where('payment_status', 'paid')
+                    ->whereMonth('created_at', now()->month)
+                    ->sum('commission_amount'),
+                'today' => Booking::where('payment_status', 'paid')
+                    ->whereDate('created_at', today())
+                    ->sum('total_amount') -
+                    Booking::where('payment_status', 'paid')
+                    ->whereDate('created_at', today())
+                    ->sum('commission_amount'),
             ],
             'reviews' => [
                 'total' => Review::count(),

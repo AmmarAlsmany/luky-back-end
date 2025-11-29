@@ -37,9 +37,9 @@ class ProviderController extends Controller
                 'category_id' => 'required|exists:service_categories,id', // Use category instead of business_type
                 'description' => 'nullable|string|max:1000',
                 'city_id' => 'required|exists:cities,id',
-                'address' => 'nullable|string|max:500',
-                'latitude' => 'nullable|numeric|between:-90,90',
-                'longitude' => 'nullable|numeric|between:-180,180',
+                'address' => 'required|string|max:500',
+                'latitude' => 'required|numeric|between:-90,90',
+                'longitude' => 'required|numeric|between:-180,180',
                 'working_hours' => 'nullable|array',
                 'off_days' => 'nullable|array',
             ]);
@@ -110,8 +110,8 @@ class ProviderController extends Controller
             'description' => 'nullable|string|max:1000',
             'city_id' => 'required|exists:cities,id',
             'address' => 'required|string|max:500', // Required - clients need to find provider
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
             'working_hours' => 'required|array', // Required - needed for booking availability
             'working_hours.*.day' => 'required|string',
             'working_hours.*.open' => 'required|date_format:H:i',

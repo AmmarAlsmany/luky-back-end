@@ -267,4 +267,9 @@ return [
     'logo_hint' => 'Upload your business logo (JPG, PNG - max 2MB)',
     'building_image' => 'Building/Location Image',
     'building_image_hint' => 'Upload an image of your building from outside (JPG, PNG - max 5MB)',
+
+    // Location & Maps
+    'location_and_hours' => 'Location & Working Hours',
+    'select_location' => 'Select Provider Location',
+    'click_map_to_select' => 'Click on the map or drag the marker to select exact location. You can also search for an address using the search box above.',
 ];

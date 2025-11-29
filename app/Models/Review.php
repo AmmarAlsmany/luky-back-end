@@ -21,6 +21,10 @@ class Review extends Model
         'admin_response',
         'responded_by',
         'responded_at',
+        'approval_status',
+        'approved_by',
+        'approved_at',
+        'rejection_reason',
     ];
 
     protected $casts = [
@@ -29,6 +33,16 @@ class Review extends Model
         'is_flagged' => 'boolean',
         'flagged_at' => 'datetime',
         'responded_at' => 'datetime',
+        'approved_at' => 'datetime',
+    ];
+
+    /**
+     * Default values for attributes
+     */
+    protected $attributes = [
+        'approval_status' => 'pending',
+        'is_visible' => true,
+        'is_flagged' => false,
     ];
 
     /**
@@ -93,5 +107,37 @@ class Review extends Model
     public function scopeWithRating($query, int $rating)
     {
         return $query->where('rating', $rating);
+    }
+
+    /**
+     * Scope for approved reviews only
+     */
+    public function scopeApproved($query)
+    {
+        return $query->where('approval_status', 'approved');
+    }
+
+    /**
+     * Scope for pending reviews
+     */
+    public function scopePending($query)
+    {
+        return $query->where('approval_status', 'pending');
+    }
+
+    /**
+     * Scope for rejected reviews
+     */
+    public function scopeRejected($query)
+    {
+        return $query->where('approval_status', 'rejected');
+    }
+
+    /**
+     * Get the admin who approved/rejected the review
+     */
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 }

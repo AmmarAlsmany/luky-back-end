@@ -248,6 +248,15 @@ class ProviderController extends Controller
 
             $user->assignRole('provider');
 
+            // Filter out empty off_days (null or empty strings)
+            $offDays = [];
+            if (!empty($validated['off_days'])) {
+                $offDays = array_filter($validated['off_days'], function($date) {
+                    return !empty($date) && $date !== null;
+                });
+                $offDays = array_values($offDays); // Re-index array
+            }
+
             // Create provider profile
             $provider = ServiceProvider::create([
                 'user_id' => $user->id,
@@ -259,7 +268,7 @@ class ProviderController extends Controller
                 'latitude' => $validated['latitude'] ?? null,
                 'longitude' => $validated['longitude'] ?? null,
                 'working_hours' => $validated['working_hours'] ?? [],
-                'off_days' => $validated['off_days'] ?? [],
+                'off_days' => $offDays,
                 'verification_status' => 'pending',
                 'commission_rate' => 15.00,
                 'is_active' => false,

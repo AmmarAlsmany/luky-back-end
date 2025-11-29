@@ -302,4 +302,48 @@ class NotificationController extends Controller
             'message' => 'All notifications marked as read',
         ]);
     }
+
+    /**
+     * Check for new notifications (for real-time polling)
+     * Returns only notifications created after the provided timestamp
+     */
+    public function checkNew(Request $request)
+    {
+        $lastCheck = $request->input('last_check');
+        $userId = auth()->id();
+
+        // Get new notifications since last check
+        $query = Notification::where('user_id', $userId)
+            ->where('is_read', false)
+            ->orderByDesc('created_at');
+
+        if ($lastCheck) {
+            $query->where('created_at', '>', $lastCheck);
+        }
+
+        $newNotifications = $query->limit(5)->get();
+
+        $unreadCount = Notification::where('user_id', $userId)
+            ->where('is_read', false)
+            ->count();
+
+        return response()->json([
+            'success' => true,
+            'has_new' => $newNotifications->count() > 0,
+            'count' => $newNotifications->count(),
+            'total_unread' => $unreadCount,
+            'notifications' => $newNotifications->map(function ($notification) {
+                return [
+                    'id' => $notification->id,
+                    'type' => $notification->type,
+                    'title' => $notification->title,
+                    'body' => $notification->body,
+                    'data' => $notification->data,
+                    'created_at' => $notification->created_at->toIso8601String(),
+                    'time_ago' => $notification->created_at->diffForHumans(),
+                ];
+            }),
+            'timestamp' => now()->toIso8601String(),
+        ]);
+    }
 }

@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\UserAddressController;
 use App\Http\Controllers\Api\PromoCodeController;
+use App\Http\Controllers\Api\BannerController;
 
 // Public routes - No authentication required
 Route::prefix('v1')->group(function () {
@@ -29,6 +30,8 @@ Route::prefix('v1')->group(function () {
     Route::get('/cities/{id}', [LocationController::class, 'cityById']);
     Route::get('/app-settings', [LocationController::class, 'appSettings']);
     Route::get('/banners', [LocationController::class, 'banners']);
+    Route::post('/banners/{id}/impression', [BannerController::class, 'trackImpression']);
+    Route::post('/banners/{id}/click', [BannerController::class, 'trackClick']);
 
     // Service Categories
     Route::get('/service-categories', [ServiceController::class, 'categories']);
@@ -54,8 +57,8 @@ Route::prefix('v1')->group(function () {
     Route::get('/pages/{slug}', [App\Http\Controllers\Api\Admin\StaticPagesController::class, 'getBySlug']);
 });
 
-// Protected routes - Requires authentication and active status
-Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
+// Protected routes - Requires authentication, active status, and correct app type
+Route::prefix('v1')->middleware(['auth:sanctum', 'active', 'validate.app.type'])->group(function () {
 
     // User Profile Management
     Route::get('/user/profile', [AuthController::class, 'profile']);
@@ -122,7 +125,9 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
     // Client payment routes (Rate Limited)
     Route::middleware(['role:client'])->group(function () {
         Route::get('/payments/methods', [PaymentController::class, 'getPaymentMethods']);
+        Route::get('/payments/status', [PaymentController::class, 'getPaymentStatus']);
         Route::post('/payments/initiate', [PaymentController::class, 'initiatePayment'])->middleware('throttle:10,1');
+        Route::post('/payments/wallet', [PaymentController::class, 'payWithWallet'])->middleware('throttle:10,1');
     });
 
     // Notification routes (all authenticated users)
@@ -177,10 +182,11 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('/favorites/toggle', [App\Http\Controllers\Api\FavoritesController::class, 'toggle']);
 });
 
-// Payment callbacks and webhook (no auth - MyFatoorah redirects/calls these)
-Route::get('/v1/payments/callback/success', [PaymentController::class, 'paymentCallback']);
-Route::get('/v1/payments/callback/error', [PaymentController::class, 'paymentCallback']);
+// Payment webhook (no auth - MyFatoorah calls this endpoint server-to-server)
 Route::post('/v1/payments/webhook', [PaymentController::class, 'webhook']);
+
+// Payment callback (no auth - user returns here after payment, works for both test & live)
+Route::get('/v1/payments/callback', [PaymentController::class, 'paymentCallback']);
 
 // ============================================
 // ADMIN DASHBOARD APIs
@@ -420,5 +426,12 @@ Route::prefix('admin')->group(function () {
         Route::get('/dashboard/recent-activities', [App\Http\Controllers\Api\Admin\DashboardController::class, 'recentActivities']);
         Route::get('/dashboard/booking-status-distribution', [App\Http\Controllers\Api\Admin\DashboardController::class, 'bookingStatusDistribution']);
         Route::get('/dashboard/rating-distribution', [App\Http\Controllers\Api\Admin\DashboardController::class, 'ratingDistribution']);
+
+        // ===================================
+        // FCM TESTING ENDPOINTS
+        // ===================================
+        Route::post('/test/fcm/payment-completed', [PaymentController::class, 'testFCMPaymentCompleted']);
+        Route::post('/test/fcm/payment-failed', [PaymentController::class, 'testFCMPaymentFailed']);
+        Route::post('/test/fcm/payment-timeout', [PaymentController::class, 'testFCMPaymentTimeout']);
     });
 });

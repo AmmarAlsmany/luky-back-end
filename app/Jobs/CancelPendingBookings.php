@@ -38,8 +38,21 @@ class CancelPendingBookings implements ShouldQueue
                 'cancelled_at' => now()
             ]);
 
-            // Send notification to client only (provider didn't respond)
+            // Send notification to client (provider didn't respond)
             $notificationService->sendBookingCancelled($booking, 'client');
+
+            // Send notification to admin/dashboard users
+            $notificationService->sendToAdmins(
+                'booking_cancelled',
+                'Booking Auto-Cancelled',
+                "Booking #{$booking->booking_number} was cancelled - provider did not respond within {$timeoutMinutes} minutes",
+                [
+                    'booking_id' => $booking->id,
+                    'booking_number' => $booking->booking_number,
+                    'cancelled_by' => 'system',
+                    'reason' => $booking->cancellation_reason,
+                ]
+            );
 
             Log::info('Booking auto-cancelled - provider did not respond', [
                 'booking_id' => $booking->id,

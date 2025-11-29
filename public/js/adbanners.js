@@ -13,7 +13,9 @@ class AdBannerManager {
         this.resizeHandle = null;
         this.dragStart = { x: 0, y: 0 };
         this.resizeStart = { x: 0, y: 0, width: 0, height: 0 };
-        
+        this.editMode = false; // Track if we're editing an existing banner
+        this.editingBannerId = null; // Store the ID of the banner being edited
+
         this.init();
     }
 
@@ -201,7 +203,7 @@ class AdBannerManager {
                 color: this.titleColorInput.value,
                 fontFamily: this.titleFontInput.value,
                 textShadow: '2px 2px 4px rgba(0,0,0,0.7)',
-                className: 'text-center fw-bold'
+                textAlign: 'center'
             }, 'title');
         }
 
@@ -212,7 +214,7 @@ class AdBannerManager {
                 color: this.providerColorInput.value,
                 fontFamily: this.providerFontInput.value,
                 textShadow: '1px 1px 2px rgba(0,0,0,0.7)',
-                className: 'text-center'
+                textAlign: 'center'
             }, 'provider');
         }
 
@@ -226,7 +228,7 @@ class AdBannerManager {
                 backgroundColor: this.offerBgColorInput.value,
                 color: this.offerTextColorInput.value,
                 fontFamily: this.offerFontInput.value,
-                className: 'badge'
+                textAlign: 'center'
             }, 'offer');
         }
     }
@@ -267,8 +269,10 @@ class AdBannerManager {
             const bannerRect = this.bannerPreview.getBoundingClientRect();
             const bannerCenterX = bannerRect.width / 2;
             const bannerCenterY = bannerRect.height / 2;
-            
-            textElement.style.left = `${bannerCenterX - 100}px`;
+
+            // Set a reasonable default width for text centering to work
+            textElement.style.width = '300px';
+            textElement.style.left = `${bannerCenterX - 150}px`; // Center the 300px wide element
             textElement.style.top = `${bannerCenterY - 20}px`;
         }
 
@@ -475,19 +479,19 @@ class AdBannerManager {
     resetProviderColor() {
         this.providerColorInput.value = '#ffffff';
         this.updatePreview();
-        this.showToast('Provider color reset to white', 'info');
+        this.showToast(window.bannerTranslations?.provider_color_reset || 'Provider color reset to white', 'info');
     }
 
     resetOfferBgColor() {
         this.offerBgColorInput.value = '#ffc107';
         this.updatePreview();
-        this.showToast('Offer background color reset to yellow', 'info');
+        this.showToast(window.bannerTranslations?.offer_bg_color_reset || 'Offer background color reset to yellow', 'info');
     }
 
     resetOfferTextColor() {
         this.offerTextColorInput.value = '#000000';
         this.updatePreview();
-        this.showToast('Offer text color reset to black', 'info');
+        this.showToast(window.bannerTranslations?.offer_text_color_reset || 'Offer text color reset to black', 'info');
     }
 
     validateDates() {
@@ -505,7 +509,14 @@ class AdBannerManager {
         document.getElementById('ad-banner-form').reset();
         this.selectedBannerInput.value = '';
         this.selectedBanner = null;
-        
+
+        // Reset edit mode
+        this.editMode = false;
+        this.editingBannerId = null;
+
+        // Update button text
+        this.createBtn.innerHTML = '<iconify-icon icon="solar:add-circle-bold-duotone" class="me-1"></iconify-icon>Create Ad';
+
         // Reset all colors, fonts, and sizes to defaults
         this.titleColorInput.value = '#ffffff';
         this.titleFontInput.value = 'Arial, sans-serif';
@@ -517,14 +528,14 @@ class AdBannerManager {
         this.offerTextColorInput.value = '#000000';
         this.offerFontInput.value = 'Arial, sans-serif';
         this.offerSizeInput.value = '1.1rem';
-        
+
         // Reset text positions
         this.textPositions = {
             title: { x: 0, y: 0, width: 0, height: 0 },
             provider: { x: 0, y: 0, width: 0, height: 0 },
             offer: { x: 0, y: 0, width: 0, height: 0 }
         };
-        
+
         // Reset banner selection
         this.bannerOptions.forEach(opt => {
             opt.querySelector('.banner-preview').classList.remove('border-primary', 'border-3');
@@ -534,7 +545,7 @@ class AdBannerManager {
         // Reset preview (banner stays fixed size)
         this.bannerPreview.style.backgroundImage = '';
         this.bannerPreview.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-        
+
         // Clear preview content
         this.clearPreviewContent();
     }
@@ -545,20 +556,22 @@ class AdBannerManager {
             console.log('Already creating banner, ignoring duplicate request');
             return;
         }
-        
-        const form = document.getElementById('ad-banner-form');
+
+        // Log edit mode status for debugging
+        console.log('Edit Mode:', this.editMode);
+        console.log('Editing Banner ID:', this.editingBannerId);
 
         // Validate form
         if (!this.mainTitleInput.value || !this.providerNameInput.value ||
             !this.offerTextInput.value || !this.selectedBannerInput.value ||
             !this.startDateInput.value || !this.endDateInput.value) {
-            this.showToast('Please fill in all required fields and select a banner background.', 'warning');
+            this.showToast(window.bannerTranslations?.fill_required_fields || 'Please fill in all required fields and select a banner background.', 'warning');
             return;
         }
 
         // Validate date range
         if (new Date(this.startDateInput.value) >= new Date(this.endDateInput.value)) {
-            this.showToast('End date must be after start date.', 'error');
+            this.showToast(window.bannerTranslations?.end_date_must_be_after || 'End date must be after start date.', 'error');
             return;
         }
 
@@ -566,7 +579,8 @@ class AdBannerManager {
         this.isCreating = true;
 
         // Show loading state
-        this.createBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
+        const loadingText = this.editMode ? 'Updating...' : 'Creating...';
+        this.createBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>${loadingText}`;
         this.createBtn.disabled = true;
 
         try {
@@ -604,9 +618,17 @@ class AdBannerManager {
             // Get CSRF token
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
+            // Determine endpoint and method based on edit mode
+            const url = this.editMode ? `/banners/${this.editingBannerId}` : '/banners/store';
+            const method = this.editMode ? 'PUT' : 'POST';
+            const successMessage = this.editMode ? 'Banner updated successfully!' : 'Banner created successfully!';
+
+            console.log('Request URL:', url);
+            console.log('Request Method:', method);
+
             // Send to web route (not API)
-            const response = await fetch('/banners/store', {
-                method: 'POST',
+            const response = await fetch(url, {
+                method: method,
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
@@ -618,17 +640,17 @@ class AdBannerManager {
             const result = await response.json();
 
             if (result.success) {
-                this.showToast('Banner created successfully!', 'success');
+                this.showToast(successMessage, 'success');
 
                 // Reset form
                 this.resetForm();
 
-                // Reload page to show new banner in the list
+                // Reload page to show new/updated banner in the list
                 setTimeout(() => {
                     window.location.reload();
                 }, 1500);
             } else {
-                throw new Error(result.message || 'Failed to create banner');
+                throw new Error(result.message || (this.editMode ? 'Failed to update banner' : 'Failed to create banner'));
             }
         } catch (error) {
             console.error('Error creating banner:', error);
@@ -689,7 +711,7 @@ class AdBannerManager {
 
     openPreview() {
         if (!this.selectedBannerInput.value) {
-            this.showToast('Please select a banner background first.', 'warning');
+            this.showToast(window.bannerTranslations?.select_banner_first || 'Please select a banner background first.', 'warning');
             return;
         }
         
@@ -827,7 +849,7 @@ class AdBannerManager {
         
     downloadBanner() {
         if (!this.modalPreviewElement) {
-            this.showToast('Please preview the banner first.', 'warning');
+            this.showToast(window.bannerTranslations?.preview_banner_first || 'Please preview the banner first.', 'warning');
             return;
         }
         
@@ -845,11 +867,11 @@ class AdBannerManager {
                     link.download = `banner-${Date.now()}.png`;
                     link.href = canvas.toDataURL('image/png');
                     link.click();
-                    
-                    this.showToast('Banner downloaded successfully!', 'success');
+
+                    this.showToast(window.bannerTranslations?.banner_downloaded || 'Banner downloaded successfully!', 'success');
                 }).catch(error => {
                     console.error('Download error:', error);
-                    this.showToast('Download failed. Please try again.', 'error');
+                    this.showToast(window.bannerTranslations?.download_failed || 'Download failed. Please try again.', 'error');
                 });
             } else {
                 // Fallback: Create a simple download using canvas
@@ -857,7 +879,7 @@ class AdBannerManager {
             }
         } catch (error) {
             console.error('Download error:', error);
-            this.showToast('Download failed. Please try again.', 'error');
+            this.showToast(window.bannerTranslations?.download_failed || 'Download failed. Please try again.', 'error');
         }
     }
 
@@ -885,8 +907,8 @@ class AdBannerManager {
             link.download = `banner-${Date.now()}.png`;
             link.href = canvas.toDataURL('image/png');
             link.click();
-            
-            this.showToast('Banner downloaded successfully!', 'success');
+
+            this.showToast(window.bannerTranslations?.banner_downloaded || 'Banner downloaded successfully!', 'success');
         };
         
         img.src = `/images/banners/${this.selectedBannerInput.value}`;
@@ -993,7 +1015,7 @@ class AdBannerManager {
 
 // Global functions for ad management
 async function deleteAd(adId) {
-    if (!confirm('Are you sure you want to delete this ad? This action cannot be undone.')) {
+    if (!confirm(window.bannerTranslations?.confirm_delete || 'Are you sure you want to delete this ad? This action cannot be undone.')) {
         return;
     }
 
@@ -1022,15 +1044,15 @@ async function deleteAd(adId) {
                     adElement.remove();
 
                     // Show success message
-                    showToast('Ad deleted successfully!', 'success');
+                    showToast(window.bannerTranslations?.ad_deleted || 'Ad deleted successfully!', 'success');
                 }, 300);
             }
         } else {
-            showToast(result.message || 'Failed to delete ad', 'error');
+            showToast(result.message || (window.bannerTranslations?.delete_failed || 'Failed to delete ad'), 'error');
         }
     } catch (error) {
         console.error('Error deleting ad:', error);
-        showToast('Failed to delete ad. Please try again.', 'error');
+        showToast(window.bannerTranslations?.delete_failed || 'Failed to delete ad. Please try again.', 'error');
     }
 }
 
@@ -1115,6 +1137,14 @@ async function editAd(adId) {
 
             // Update preview with new data
             if (window.adBannerManager) {
+                // Set edit mode
+                window.adBannerManager.editMode = true;
+                window.adBannerManager.editingBannerId = adId;
+
+                // Update button text to indicate edit mode
+                window.adBannerManager.createBtn.innerHTML = '<iconify-icon icon="solar:pen-bold-duotone" class="me-1"></iconify-icon>Update Banner';
+
+                // Update preview
                 window.adBannerManager.updatePreview();
             }
 
@@ -1122,13 +1152,14 @@ async function editAd(adId) {
             document.getElementById('create-ad-banner').scrollIntoView({ behavior: 'smooth' });
 
             // Show edit mode message
-            showToast(`Editing banner: ${banner.title}`, 'info');
+            const editingMsg = window.bannerTranslations?.editing_banner || 'Editing banner';
+            showToast(`${editingMsg}: ${banner.title}`, 'info');
         } else {
-            showToast('Failed to load banner data', 'error');
+            showToast(window.bannerTranslations?.failed_load_banner || 'Failed to load banner data', 'error');
         }
     } catch (error) {
         console.error('Error loading banner:', error);
-        showToast('Failed to load banner data', 'error');
+        showToast(window.bannerTranslations?.failed_load_banner || 'Failed to load banner data', 'error');
     }
 }
 

@@ -136,13 +136,43 @@
                                         @endfor
                                         <span class="text-muted ms-2">{{ $review->created_at->diffForHumans() }}</span>
                                     </div>
-                                    <p class="text-muted mb-2">{{ $review->comment ?? __('reviews.no_comment_provided') }}</p>
-                                    
-                                    @if($review->booking)
-                                        <small class="text-muted">
-                                            <i class="mdi mdi-calendar me-1"></i>
-                                            {{ __('reviews.booking') }}: #{{ $review->booking->booking_number }}
-                                        </small>
+                                    @if($review->comment)
+                                        <p class="text-muted mb-2">{{ $review->comment }}</p>
+                                    @else
+                                        <p class="text-muted fst-italic mb-2">{{ __('reviews.no_comment_provided') }}</p>
+                                    @endif
+
+                                    <div class="d-flex align-items-center gap-3">
+                                        @if($review->booking)
+                                            <small class="text-muted">
+                                                <i class="mdi mdi-calendar me-1"></i>
+                                                {{ __('reviews.booking') }}: #{{ $review->booking->booking_number }}
+                                            </small>
+                                        @endif
+
+                                        {{-- Approval Status Badge --}}
+                                        @if($review->approval_status === 'approved')
+                                            <span class="badge bg-success-subtle text-success">
+                                                <i class="mdi mdi-check-circle me-1"></i>{{ __('reviews.approved') }}
+                                            </span>
+                                        @elseif($review->approval_status === 'rejected')
+                                            <span class="badge bg-danger-subtle text-danger">
+                                                <i class="mdi mdi-close-circle me-1"></i>{{ __('reviews.rejected') }}
+                                            </span>
+                                        @else
+                                            <span class="badge bg-warning-subtle text-warning">
+                                                <i class="mdi mdi-clock-outline me-1"></i>{{ __('reviews.pending_approval') }}
+                                            </span>
+                                        @endif
+                                    </div>
+
+                                    {{-- Rejection Reason --}}
+                                    @if($review->rejection_reason)
+                                        <div class="mt-2 p-2 bg-danger-subtle rounded">
+                                            <small class="text-danger">
+                                                <strong>{{ __('reviews.rejection_reason') }}:</strong> {{ $review->rejection_reason }}
+                                            </small>
+                                        </div>
                                     @endif
 
                                     @if($review->admin_response)
@@ -154,18 +184,37 @@
                                     @endif
                                 </div>
                             </div>
-                            <div class="d-flex gap-2">
+                            <div class="d-flex gap-2 flex-wrap">
                                 @if($review->is_flagged)
                                     <span class="badge bg-danger">{{ __('reviews.flagged_badge') }}</span>
                                 @endif
-                                <button class="btn btn-sm btn-outline-warning toggle-flag" data-id="{{ $review->id }}" data-flagged="{{ $review->is_flagged ? 1 : 0 }}">
-                                    <i class="mdi mdi-flag"></i>
+
+                                {{-- Approval Buttons --}}
+                                @if($review->approval_status === 'pending')
+                                    <button class="btn btn-sm btn-success approve-review" data-id="{{ $review->id }}" title="{{ __('reviews.approve_review') }}">
+                                        <i class="mdi mdi-check"></i> {{ __('reviews.approve') }}
+                                    </button>
+                                    <button class="btn btn-sm btn-danger reject-review" data-id="{{ $review->id }}" title="{{ __('reviews.reject_review') }}">
+                                        <i class="mdi mdi-close"></i> {{ __('reviews.reject') }}
+                                    </button>
+                                @elseif($review->approval_status === 'approved')
+                                    <button class="btn btn-sm btn-warning reject-review" data-id="{{ $review->id }}" title="{{ __('reviews.reject_review') }}">
+                                        <i class="mdi mdi-close"></i> {{ __('reviews.reject') }}
+                                    </button>
+                                @elseif($review->approval_status === 'rejected')
+                                    <button class="btn btn-sm btn-success approve-review" data-id="{{ $review->id }}" title="{{ __('reviews.approve_review') }}">
+                                        <i class="mdi mdi-check"></i> {{ __('reviews.approve') }}
+                                    </button>
+                                @endif
+
+                                <button class="btn btn-sm btn-outline-warning toggle-flag" data-id="{{ $review->id }}" data-flagged="{{ $review->is_flagged ? 1 : 0 }}" title="{{ __('reviews.toggle_flag') }}">
+                                    <i class="mdi mdi-flag"></i> {{ __('reviews.flag') }}
                                 </button>
-                                <button class="btn btn-sm btn-outline-primary add-response" data-id="{{ $review->id }}" data-response="{{ $review->admin_response ?? '' }}">
-                                    <i class="mdi mdi-reply"></i>
+                                <button class="btn btn-sm btn-outline-primary add-response" data-id="{{ $review->id }}" data-response="{{ $review->admin_response ?? '' }}" title="{{ __('reviews.add_response') }}">
+                                    <i class="mdi mdi-reply"></i> {{ __('reviews.respond') }}
                                 </button>
-                                <button class="btn btn-sm btn-outline-danger delete-review" data-id="{{ $review->id }}">
-                                    <i class="mdi mdi-delete"></i>
+                                <button class="btn btn-sm btn-outline-danger delete-review" data-id="{{ $review->id }}" title="{{ __('reviews.delete_review') }}">
+                                    <i class="mdi mdi-delete"></i> {{ __('reviews.delete') }}
                                 </button>
                             </div>
                         </div>
@@ -209,76 +258,223 @@
     </div>
 </div>
 
+<!-- Rejection Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger-subtle">
+                <h5 class="modal-title text-danger">
+                    <i class="mdi mdi-close-circle me-2"></i>{{ __('reviews.reject_review') }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">{{ __('reviews.rejection_reason_prompt') }}</p>
+                <textarea class="form-control" id="rejectionReason" rows="3" placeholder="{{ __('reviews.enter_rejection_reason') }}"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('reviews.cancel') }}</button>
+                <button type="button" class="btn btn-danger" id="confirmReject">
+                    <i class="mdi mdi-close me-1"></i>{{ __('reviews.confirm_reject') }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
-@section('script')
+@section('script-bottom')
 <script>
-    let currentReviewId = null;
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Review actions initialized');
 
-    // Toggle Flag
-    $('.toggle-flag').click(function() {
-        const reviewId = $(this).data('id');
-        const isFlagged = $(this).data('flagged');
-        
-        $.ajax({
-            url: `/reviews/${reviewId}/toggle-flag`,
-            method: 'POST',
-            data: {
-                _token: '{{ csrf_token() }}'
-            },
-            success: function(response) {
-                if(response.success) {
-                    location.reload();
-                }
-            }
+        let currentReviewId = null;
+        let responseModal = null;
+        let rejectModal = null;
+
+        // Initialize Bootstrap modals
+        const responseModalEl = document.getElementById('responseModal');
+        const rejectModalEl = document.getElementById('rejectModal');
+
+        if (responseModalEl) {
+            responseModal = new bootstrap.Modal(responseModalEl);
+            console.log('Response modal initialized');
+        }
+        if (rejectModalEl) {
+            rejectModal = new bootstrap.Modal(rejectModalEl);
+            console.log('Reject modal initialized');
+        }
+
+        // Helper function for AJAX requests
+        function makeAjaxRequest(url, method, data, successCallback, errorCallback) {
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                },
+                body: method !== 'GET' ? JSON.stringify(data) : null
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (successCallback) successCallback(data);
+            })
+            .catch(error => {
+                if (errorCallback) errorCallback(error);
+            });
+        }
+
+        // Toggle Flag
+        document.querySelectorAll('.toggle-flag').forEach(button => {
+            button.addEventListener('click', function() {
+                console.log('Toggle flag clicked');
+                const reviewId = this.getAttribute('data-id');
+                console.log('Review ID:', reviewId);
+
+                makeAjaxRequest(
+                    `/reviews/${reviewId}/toggle-flag`,
+                    'POST',
+                    {},
+                    (response) => {
+                        if(response.success) {
+                            location.reload();
+                        }
+                    },
+                    (error) => {
+                        alert('{{ __('reviews.error') }}: Failed to toggle flag');
+                    }
+                );
+            });
         });
-    });
 
-    // Add Response
-    $('.add-response').click(function() {
-        currentReviewId = $(this).data('id');
-        const currentResponse = $(this).data('response');
-        $('#adminResponse').val(currentResponse);
-        $('#responseModal').modal('show');
-    });
-
-    $('#saveResponse').click(function() {
-        const response = $('#adminResponse').val();
-        
-        $.ajax({
-            url: `/reviews/${currentReviewId}/response`,
-            method: 'POST',
-            data: {
-                _token: '{{ csrf_token() }}',
-                admin_response: response
-            },
-            success: function(res) {
-                if(res.success) {
-                    $('#responseModal').modal('hide');
-                    location.reload();
+        // Add Response
+        document.querySelectorAll('.add-response').forEach(button => {
+            button.addEventListener('click', function() {
+                currentReviewId = this.getAttribute('data-id');
+                const currentResponse = this.getAttribute('data-response');
+                document.getElementById('adminResponse').value = currentResponse || '';
+                if (responseModal) {
+                    responseModal.show();
                 }
-            }
+            });
         });
-    });
 
-    // Delete Review
-    $('.delete-review').click(function() {
-        if(!confirm('{{ __('reviews.delete_review_confirm') }}')) return;
-        
-        const reviewId = $(this).data('id');
-        
-        $.ajax({
-            url: `/reviews/${reviewId}`,
-            method: 'DELETE',
-            data: {
-                _token: '{{ csrf_token() }}'
-            },
-            success: function(response) {
-                if(response.success) {
-                    location.reload();
-                }
-            }
+        const saveResponseBtn = document.getElementById('saveResponse');
+        if (saveResponseBtn) {
+            saveResponseBtn.addEventListener('click', function() {
+                const response = document.getElementById('adminResponse').value;
+
+                makeAjaxRequest(
+                    `/reviews/${currentReviewId}/response`,
+                    'POST',
+                    { admin_response: response },
+                    (res) => {
+                        if(res.success) {
+                            if (responseModal) {
+                                responseModal.hide();
+                            }
+                            location.reload();
+                        }
+                    },
+                    (error) => {
+                        alert('{{ __('reviews.error') }}: Failed to save response');
+                    }
+                );
+            });
+        }
+
+        // Delete Review
+        document.querySelectorAll('.delete-review').forEach(button => {
+            button.addEventListener('click', function() {
+                if(!confirm('{{ __('reviews.delete_review_confirm') }}')) return;
+
+                const reviewId = this.getAttribute('data-id');
+
+                makeAjaxRequest(
+                    `/reviews/${reviewId}`,
+                    'DELETE',
+                    {},
+                    (response) => {
+                        if(response.success) {
+                            location.reload();
+                        }
+                    },
+                    (error) => {
+                        alert('{{ __('reviews.error') }}: Failed to delete review');
+                    }
+                );
+            });
         });
+
+        // Approve Review
+        document.querySelectorAll('.approve-review').forEach(button => {
+            button.addEventListener('click', function() {
+                if(!confirm('{{ __('reviews.approve_review_confirm') }}')) return;
+
+                const reviewId = this.getAttribute('data-id');
+                const buttonElement = this;
+
+                makeAjaxRequest(
+                    `/reviews/${reviewId}/approve`,
+                    'POST',
+                    {},
+                    (response) => {
+                        if(response.success) {
+                            // Force reload with cache bypass
+                            location.reload(true);
+                        }
+                    },
+                    (error) => {
+                        alert('{{ __('reviews.error_approving') }}');
+                    }
+                );
+            });
+        });
+
+        // Reject Review
+        document.querySelectorAll('.reject-review').forEach(button => {
+            button.addEventListener('click', function() {
+                currentReviewId = this.getAttribute('data-id');
+                document.getElementById('rejectionReason').value = '';
+                if (rejectModal) {
+                    rejectModal.show();
+                }
+            });
+        });
+
+        const confirmRejectBtn = document.getElementById('confirmReject');
+        if (confirmRejectBtn) {
+            confirmRejectBtn.addEventListener('click', function() {
+                const reason = document.getElementById('rejectionReason').value;
+
+                if(!reason.trim()) {
+                    alert('{{ __('reviews.rejection_reason_required') }}');
+                    return;
+                }
+
+                makeAjaxRequest(
+                    `/reviews/${currentReviewId}/reject`,
+                    'POST',
+                    { reason: reason },
+                    (response) => {
+                        if(response.success) {
+                            if (rejectModal) {
+                                rejectModal.hide();
+                            }
+                            // Force reload with cache bypass
+                            location.reload(true);
+                        }
+                    },
+                    (error) => {
+                        alert('{{ __('reviews.error_rejecting') }}');
+                    }
+                );
+            });
+        }
+
+        console.log('All event listeners attached');
     });
 </script>
 @endsection

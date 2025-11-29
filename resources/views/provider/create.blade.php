@@ -67,6 +67,36 @@
                                        value="{{ old('phone') }}" required>
                                 <small class="text-muted">{{ __('providers.phone_otp_hint') }}</small>
                             </div>
+
+                            <!-- Contract Details -->
+                            <h5 class="mb-3 mt-4">
+                                <i class="bx bx-file-blank me-2"></i>{{ __('providers.contract_details') }}
+                            </h5>
+
+                            <div class="mb-3">
+                                <label for="contract_start_date" class="form-label">{{ __('providers.contract_start_date') }} <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="contract_start_date" name="contract_start_date"
+                                       value="{{ old('contract_start_date') }}" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="contract_end_date" class="form-label">{{ __('providers.contract_end_date') }}</label>
+                                <input type="date" class="form-control" id="contract_end_date" name="contract_end_date"
+                                       value="{{ old('contract_end_date') }}">
+                                <small class="text-muted">{{ __('providers.contract_end_date_hint') }}</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="payment_terms" class="form-label">{{ __('providers.payment_terms') }}</label>
+                                <textarea class="form-control" id="payment_terms" name="payment_terms" rows="2"
+                                          placeholder="{{ __('providers.payment_terms_placeholder') }}">{{ old('payment_terms') }}</textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="contract_notes" class="form-label">{{ __('providers.contract_notes') }}</label>
+                                <textarea class="form-control" id="contract_notes" name="contract_notes" rows="2"
+                                          placeholder="{{ __('providers.contract_notes_placeholder') }}">{{ old('contract_notes') }}</textarea>
+                            </div>
                         </div>
 
                         <!-- Business Information -->
@@ -112,77 +142,73 @@
                             </div>
 
                             <div class="mb-3">
-                                <label for="city_id" class="form-label">{{ __('common.city') }} <span class="text-danger">*</span></label>
-                                <select class="form-select" id="city_id" name="city_id" required>
-                                    <option value="">{{ __('providers.select_city') }}</option>
-                                    @if(!empty($cities))
-                                        @foreach($cities as $city)
-                                            <option value="{{ $city['id'] }}" {{ old('city_id') == $city['id'] ? 'selected' : '' }}>
-                                                {{ app()->getLocale() === 'ar' ? ($city['name_ar'] ?? $city['name_en']) : ($city['name_en'] ?? $city['name_ar']) }}
-                                            </option>
-                                        @endforeach
-                                    @endif
-                                </select>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="address" class="form-label">{{ __('providers.address_location') }}</label>
-                                <input type="text" class="form-control mb-2" id="address" name="address"
-                                       value="{{ old('address') }}" placeholder="{{ __('providers.address_placeholder') }}">
-                                <small class="text-muted">
-                                    <i class="bx bx-map me-1"></i>{{ __('providers.maps_hint') }}
-                                </small>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="latitude" class="form-label">{{ __('providers.latitude') }}</label>
-                                <input type="text" class="form-control" id="latitude" name="latitude"
-                                       value="{{ old('latitude') }}" placeholder="e.g., 27.5173">
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="longitude" class="form-label">{{ __('providers.longitude') }}</label>
-                                <input type="text" class="form-control" id="longitude" name="longitude"
-                                       value="{{ old('longitude') }}" placeholder="e.g., 41.6992">
-                            </div>
-
-                            <div class="mb-3">
                                 <label for="description" class="form-label">{{ __('common.description') }}</label>
                                 <textarea class="form-control" id="description" name="description" rows="3">{{ old('description') }}</textarea>
                             </div>
+                        </div>
+                    </div>
 
-                            <!-- Contract Details -->
-                            <h5 class="mb-3 mt-4">
-                                <i class="bx bx-file-blank me-2"></i>{{ __('providers.contract_details') }}
-                            </h5>
+                    <!-- Location & Working Hours Section (Side by Side) -->
+                    <hr class="my-4">
+                    <h5 class="mb-4"><i class="bx bx-map-alt me-2"></i>{{ __('providers.location_and_hours') }}</h5>
 
+                    <div class="row">
+                        <!-- LEFT: Google Maps Location Picker -->
+                        <div class="col-lg-6">
+                            <h6 class="mb-3">
+                                <i class="bx bx-map-pin me-1"></i>{{ __('providers.select_location') }} <span class="text-danger">*</span>
+                            </h6>
+                            <p class="text-muted small mb-3">
+                                <i class="bx bx-info-circle me-1"></i>Search for an address or click on the map to select the provider's exact location
+                            </p>
+
+                            <!-- Search Box -->
                             <div class="mb-3">
-                                <label for="contract_start_date" class="form-label">{{ __('providers.contract_start_date') }} <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" id="contract_start_date" name="contract_start_date" 
-                                       value="{{ old('contract_start_date') }}" required>
+                                <input type="text" class="form-control" id="map-search"
+                                       placeholder="Search for address, business name, or landmark...">
                             </div>
 
-                            <div class="mb-3">
-                                <label for="contract_end_date" class="form-label">{{ __('providers.contract_end_date') }}</label>
-                                <input type="date" class="form-control" id="contract_end_date" name="contract_end_date" 
-                                       value="{{ old('contract_end_date') }}">
-                                <small class="text-muted">{{ __('providers.contract_end_date_hint') }}</small>
+                            <!-- Map Container -->
+                            <div class="card mb-3">
+                                <div class="card-body p-0">
+                                    <div id="map" style="height: 400px; width: 100%; border-radius: 0.25rem;"></div>
+                                </div>
                             </div>
 
-                            <div class="mb-3">
-                                <label for="payment_terms" class="form-label">{{ __('providers.payment_terms') }}</label>
-                                <textarea class="form-control" id="payment_terms" name="payment_terms" rows="2" 
-                                          placeholder="{{ __('providers.payment_terms_placeholder') }}">{{ old('payment_terms') }}</textarea>
-                            </div>
+                            <!-- Selected Location Info (Auto-populated) -->
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="mb-3"><i class="bx bx-current-location me-2"></i>Selected Location</h6>
 
-                            <div class="mb-3">
-                                <label for="contract_notes" class="form-label">{{ __('providers.contract_notes') }}</label>
-                                <textarea class="form-control" id="contract_notes" name="contract_notes" rows="2" 
-                                          placeholder="{{ __('providers.contract_notes_placeholder') }}">{{ old('contract_notes') }}</textarea>
+                                    <div class="mb-2">
+                                        <label class="form-label small text-muted mb-1">Full Address</label>
+                                        <input type="text" class="form-control form-control-sm" id="address" name="address"
+                                               value="{{ old('address') }}" readonly required>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-12 mb-2">
+                                            <label class="form-label small text-muted mb-1">City</label>
+                                            <input type="text" class="form-control form-control-sm" id="city_display"
+                                                   readonly placeholder="Auto-detected">
+                                            <input type="hidden" id="city_id" name="city_id" value="{{ old('city_id') }}" required>
+                                        </div>
+                                        <div class="col-md-6 mb-2">
+                                            <label class="form-label small text-muted mb-1">Latitude</label>
+                                            <input type="text" class="form-control form-control-sm" id="latitude" name="latitude"
+                                                   value="{{ old('latitude', '24.7136') }}" readonly required>
+                                        </div>
+                                        <div class="col-md-6 mb-2">
+                                            <label class="form-label small text-muted mb-1">Longitude</label>
+                                            <input type="text" class="form-control form-control-sm" id="longitude" name="longitude"
+                                                   value="{{ old('longitude', '46.6753') }}" readonly required>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Working Hours -->
+                        <!-- RIGHT: Working Hours -->
                         <div class="col-lg-6">
                             <h5 class="mb-3">{{ __('providers.working_hours') }}</h5>
 
@@ -218,15 +244,17 @@
                                         <div class="row g-2 working-hours-inputs" style="display: none;">
                                             <div class="col-6">
                                                 <label class="form-label">{{ __('providers.open_time') }}</label>
-                                                <input type="time" class="form-control form-control-sm"
+                                                <input type="time" class="form-control form-control-sm time-input-{{ $day }}"
                                                        name="working_hours[{{ $day }}][open]"
-                                                       value="{{ old('working_hours.'.$day.'.open', '09:00') }}">
+                                                       value="{{ old('working_hours.'.$day.'.open', '09:00') }}"
+                                                       disabled>
                                             </div>
                                             <div class="col-6">
                                                 <label class="form-label">{{ __('providers.close_time') }}</label>
-                                                <input type="time" class="form-control form-control-sm"
+                                                <input type="time" class="form-control form-control-sm time-input-{{ $day }}"
                                                        name="working_hours[{{ $day }}][close]"
-                                                       value="{{ old('working_hours.'.$day.'.close', '18:00') }}">
+                                                       value="{{ old('working_hours.'.$day.'.close', '18:00') }}"
+                                                       disabled>
                                             </div>
                                         </div>
                                     </div>
@@ -234,12 +262,9 @@
                                 @endforeach
                                 <small class="text-muted">{{ __('providers.working_days_hint') }}</small>
                             </div>
-                        </div>
 
-                        <!-- Off Days -->
-                        <div class="col-lg-6">
-                            <h5 class="mb-3">{{ __('providers.special_off_days') }}</h5>
-
+                            <!-- Off Days / Holidays -->
+                            <h6 class="mb-3 mt-4">{{ __('providers.special_off_days') }}</h6>
                             <div class="mb-3">
                                 <label class="form-label">{{ __('providers.add_holidays') }}</label>
                                 <div id="off-days-container">
@@ -254,8 +279,10 @@
                                 <small class="text-muted">{{ __('providers.off_days_hint') }}</small>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Provider Documents -->
+                    <!-- Provider Documents -->
+                    <div class="row">
                         <div class="col-12">
                             <hr class="my-4">
                             <h5 class="mb-3">
@@ -340,90 +367,251 @@
 @endsection
 
 @section('script-bottom')
+<!-- Google Maps API -->
+<script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google_maps.api_key') }}&libraries=places&callback=initMap" async defer></script>
+
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Google Maps coordinate extraction
-    const addressInput = document.getElementById('address');
-    const latInput = document.getElementById('latitude');
-    const lngInput = document.getElementById('longitude');
+let map;
+let marker;
+let geocoder;
 
-    addressInput.addEventListener('input', function() {
-        const value = this.value.trim();
+// Cities database from backend
+const citiesDatabase = @json($cities ?? []);
 
-        // Check if it's a Google Maps link
-        if (value.includes('google.com/maps') || value.includes('maps.app.goo.gl')) {
-            extractCoordinates(value);
-        }
+// Initialize Google Maps
+function initMap() {
+    // Default location (Riyadh, Saudi Arabia)
+    const defaultLocation = {
+        lat: parseFloat(document.getElementById('latitude').value) || 24.7136,
+        lng: parseFloat(document.getElementById('longitude').value) || 46.6753
+    };
+
+    // Initialize geocoder
+    geocoder = new google.maps.Geocoder();
+
+    // Create map
+    map = new google.maps.Map(document.getElementById('map'), {
+        center: defaultLocation,
+        zoom: 13,
+        mapTypeControl: true,
+        streetViewControl: false,
+        fullscreenControl: true
     });
 
-    function extractCoordinates(url) {
-        let lat = null;
-        let lng = null;
+    // Create marker
+    marker = new google.maps.Marker({
+        position: defaultLocation,
+        map: map,
+        draggable: true,
+        title: 'Drag me to exact location',
+        animation: google.maps.Animation.DROP
+    });
 
-        // Pattern 1: @latitude,longitude
-        const pattern1 = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
-        const match1 = url.match(pattern1);
-        if (match1) {
-            lat = match1[1];
-            lng = match1[2];
+    // Add click listener to map
+    map.addListener('click', function(event) {
+        placeMarkerAndGetAddress(event.latLng);
+    });
+
+    // Add drag listener to marker
+    marker.addListener('dragend', function(event) {
+        getAddressFromLatLng(event.latLng);
+    });
+
+    // Initialize search box
+    const searchInput = document.getElementById('map-search');
+    const searchBox = new google.maps.places.SearchBox(searchInput);
+
+    // Bias the search to the map's viewport
+    map.addListener('bounds_changed', function() {
+        searchBox.setBounds(map.getBounds());
+    });
+
+    // Listen for place selection from search
+    searchBox.addListener('places_changed', function() {
+        const places = searchBox.getPlaces();
+
+        if (places.length === 0) {
+            return;
         }
 
-        // Pattern 2: q=latitude,longitude or ll=latitude,longitude
-        if (!lat) {
-            const pattern2 = /[?&](q|ll)=(-?\d+\.\d+),(-?\d+\.\d+)/;
-            const match2 = url.match(pattern2);
-            if (match2) {
-                lat = match2[2];
-                lng = match2[3];
-            }
+        const place = places[0];
+
+        if (!place.geometry || !place.geometry.location) {
+            return;
         }
 
-        // Pattern 3: /place/.../@latitude,longitude
-        if (!lat) {
-            const pattern3 = /\/place\/[^/]+\/@(-?\d+\.\d+),(-?\d+\.\d+)/;
-            const match3 = url.match(pattern3);
-            if (match3) {
-                lat = match3[1];
-                lng = match3[2];
-            }
-        }
+        // Move map and marker
+        map.setCenter(place.geometry.location);
+        map.setZoom(17);
+        marker.setPosition(place.geometry.location);
 
-        if (lat && lng) {
-            latInput.value = lat;
-            lngInput.value = lng;
+        // Update all fields
+        updateLocationFields(place.geometry.location, place);
+    });
+}
 
-            // Show success feedback
-            addressInput.classList.add('is-valid');
-            setTimeout(() => {
-                addressInput.classList.remove('is-valid');
-            }, 2000);
+function placeMarkerAndGetAddress(location) {
+    marker.setPosition(location);
+    marker.setAnimation(google.maps.Animation.BOUNCE);
+    setTimeout(() => marker.setAnimation(null), 750);
+
+    getAddressFromLatLng(location);
+}
+
+function getAddressFromLatLng(latLng) {
+    geocoder.geocode({ location: latLng }, function(results, status) {
+        if (status === 'OK' && results[0]) {
+            updateLocationFields(latLng, results[0]);
         } else {
-            // Show warning if no coordinates found
-            if (url.includes('google.com/maps')) {
-                addressInput.classList.add('is-invalid');
-                setTimeout(() => {
-                    addressInput.classList.remove('is-invalid');
-                }, 2000);
-            }
+            // Still update coordinates even if address lookup fails
+            updateCoordinates(latLng.lat(), latLng.lng());
+            alert('Could not fetch address for this location. Please try a different location.');
         }
+    });
+}
+
+function updateLocationFields(latLng, placeResult) {
+    const lat = latLng.lat();
+    const lng = latLng.lng();
+
+    // Update coordinates
+    document.getElementById('latitude').value = lat.toFixed(8);
+    document.getElementById('longitude').value = lng.toFixed(8);
+
+    // Get address components
+    let fullAddress = placeResult.formatted_address || '';
+    let cityName = '';
+    let countryName = '';
+
+    if (placeResult.address_components) {
+        placeResult.address_components.forEach(component => {
+            // Get city name - try multiple address component types
+            if (component.types.includes('locality')) {
+                cityName = component.long_name;
+            } else if (!cityName && component.types.includes('administrative_area_level_2')) {
+                cityName = component.long_name;
+            } else if (!cityName && component.types.includes('administrative_area_level_1')) {
+                cityName = component.long_name;
+            }
+            // Get country
+            if (component.types.includes('country')) {
+                countryName = component.long_name;
+            }
+        });
     }
 
+    // Clean up city name (remove "Principality", "Region", "Province" etc.)
+    cityName = cleanCityName(cityName);
+
+    // Update address field
+    document.getElementById('address').value = fullAddress;
+
+    // Match city from database
+    const matchedCity = matchCityFromDatabase(cityName);
+
+    if (matchedCity) {
+        document.getElementById('city_id').value = matchedCity.id;
+        document.getElementById('city_display').value = matchedCity.name_en || matchedCity.name_ar;
+    } else {
+        document.getElementById('city_id').value = '';
+        document.getElementById('city_display').value = cityName || 'Unknown City';
+    }
+
+    // Visual feedback
+    showSuccessFeedback();
+}
+
+function cleanCityName(cityName) {
+    if (!cityName) return '';
+
+    // Remove common administrative suffixes
+    const suffixesToRemove = [
+        ' Principality',
+        ' Region',
+        ' Province',
+        ' Emirate',
+        ' Municipality',
+        ' Metropolitan',
+        ' City',
+        ' الإمارة',
+        ' المنطقة',
+        ' الإقليم',
+        ' البلدية'
+    ];
+
+    let cleanName = cityName;
+    suffixesToRemove.forEach(suffix => {
+        cleanName = cleanName.replace(new RegExp(suffix + '$', 'i'), '');
+    });
+
+    return cleanName.trim();
+}
+
+function matchCityFromDatabase(cityName) {
+    if (!cityName || citiesDatabase.length === 0) return null;
+
+    const cityLower = cityName.toLowerCase();
+
+    // Try exact match first
+    let matched = citiesDatabase.find(city =>
+        (city.name_en && city.name_en.toLowerCase() === cityLower) ||
+        (city.name_ar && city.name_ar === cityName)
+    );
+
+    // Try partial match
+    if (!matched) {
+        matched = citiesDatabase.find(city =>
+            (city.name_en && city.name_en.toLowerCase().includes(cityLower)) ||
+            (city.name_ar && city.name_ar.includes(cityName))
+        );
+    }
+
+    return matched;
+}
+
+function updateCoordinates(lat, lng) {
+    document.getElementById('latitude').value = lat.toFixed(8);
+    document.getElementById('longitude').value = lng.toFixed(8);
+}
+
+function showSuccessFeedback() {
+    const fields = ['address', 'city_display', 'latitude', 'longitude'];
+
+    fields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.classList.add('is-valid');
+            setTimeout(() => field.classList.remove('is-valid'), 2000);
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
     // Working hours toggle
     const workingDayCheckboxes = document.querySelectorAll('.working-day-checkbox');
     workingDayCheckboxes.forEach(checkbox => {
         // Show/hide hours on page load based on old input
         const hoursDiv = checkbox.closest('.card-body').querySelector('.working-hours-inputs');
+        const timeInputs = hoursDiv.querySelectorAll('input[type="time"]');
+
         if (checkbox.checked) {
             hoursDiv.style.display = 'flex';
+            timeInputs.forEach(input => input.disabled = false);
         }
 
         // Toggle hours on checkbox change
         checkbox.addEventListener('change', function() {
             const hoursDiv = this.closest('.card-body').querySelector('.working-hours-inputs');
+            const timeInputs = hoursDiv.querySelectorAll('input[type="time"]');
+
             if (this.checked) {
                 hoursDiv.style.display = 'flex';
+                // Enable time inputs so they get submitted
+                timeInputs.forEach(input => input.disabled = false);
             } else {
                 hoursDiv.style.display = 'none';
+                // Disable time inputs so they DON'T get submitted (day is off)
+                timeInputs.forEach(input => input.disabled = true);
             }
         });
     });

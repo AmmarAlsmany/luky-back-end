@@ -37,6 +37,19 @@ class CancelUnpaidBookings implements ShouldQueue
             // Send notifications to both client and provider
             $notificationService->sendBookingCancelled($booking, 'both');
 
+            // Send notification to admin/dashboard users
+            $notificationService->sendToAdmins(
+                'booking_cancelled',
+                'Booking Auto-Cancelled',
+                "Booking #{$booking->booking_number} was cancelled - payment not completed within {$timeoutMinutes} minutes",
+                [
+                    'booking_id' => $booking->id,
+                    'booking_number' => $booking->booking_number,
+                    'cancelled_by' => 'system',
+                    'reason' => $booking->cancellation_reason,
+                ]
+            );
+
             Log::info('Booking auto-cancelled due to payment timeout', [
                 'booking_id' => $booking->id,
                 'booking_number' => $booking->booking_number
