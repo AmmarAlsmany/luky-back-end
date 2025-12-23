@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\DeviceToken;
-use App\Jobs\SendFCMTopicNotificationJob;
 use Illuminate\Support\Facades\Log;
 use Kreait\Firebase\Factory;
 use Kreait\Firebase\Messaging\CloudMessage;
@@ -33,11 +32,11 @@ class FCMService
                 $this->messaging = (new Factory)
                     ->withServiceAccount($this->credentialsPath)
                     ->createMessaging();
-                // Log::info('Firebase Messaging initialized successfully', [
-                //     'credentials_file' => basename($this->credentialsPath)
-                // ]);
+                Log::info('Firebase Messaging initialized successfully', [
+                    'credentials_file' => basename($this->credentialsPath)
+                ]);
             } catch (\Exception $e) {
-                // Log::error('Failed to initialize Firebase Messaging: ' . $e->getMessage());
+                Log::error('Failed to initialize Firebase Messaging: ' . $e->getMessage());
                 $this->messaging = null;
             }
         } else {
@@ -89,8 +88,9 @@ class FCMService
                 ->withAndroidConfig([
                     'priority' => 'high',
                     'notification' => [
-                        'channel_id' => 'luky_notifications',
+                        'channel_id' => 'booking_notifications',
                         'sound' => 'default',
+                        'priority' => 'high',
                         'default_vibrate_timings' => true,
                     ],
                 ])
@@ -118,52 +118,31 @@ class FCMService
             if ($failureCount > 0) {
                 Log::warning("FCM has {$failureCount} failures. Processing...");
 
-                try {
-                    $failuresArray = $report->failures()->getItems();
+                $failures = $report->failures();
+                Log::warning("Failures type: " . get_class($failures));
 
-                    foreach ($failuresArray as $index => $failure) {
-                        try {
-                            $error = $failure->error();
-                            $target = $failure->target();
+                $failures->getItems(); // Force iterator to load
 
-                            $errorCode = 'UNKNOWN';
-                            $errorMsg = 'Unknown error';
-                            $tokenValue = 'Unknown';
+                foreach ($failures as $index => $failure) {
+                    Log::warning("Processing failure index: {$index}");
 
-                            // Safely extract error code
-                            if (is_object($error)) {
-                                if (method_exists($error, 'getCode')) {
-                                    $errorCode = $error->getCode();
-                                } elseif (method_exists($error, 'errorCode')) {
-                                    $errorCode = $error->errorCode();
-                                }
+                    try {
+                        $error = $failure->error();
+                        $errorCode = method_exists($error, 'errorCode') ? $error->errorCode() : 'UNKNOWN';
+                        $errorMsg = method_exists($error, 'getMessage') ? $error->getMessage() : 'Unknown error';
 
-                                if (method_exists($error, 'getMessage')) {
-                                    $errorMsg = $error->getMessage();
-                                }
-                            }
+                        $target = $failure->target();
+                        $tokenValue = method_exists($target, 'value') ? $target->value() : 'Unknown';
 
-                            // Safely extract token
-                            if (is_object($target)) {
-                                if (method_exists($target, 'value')) {
-                                    $tokenValue = $target->value();
-                                } elseif (method_exists($target, 'getValue')) {
-                                    $tokenValue = $target->getValue();
-                                }
-                            }
-
-                            Log::error('FCM SEND FAILURE', [
-                                'index' => $index,
-                                'token_preview' => substr($tokenValue, 0, 50) . '...',
-                                'error_code' => $errorCode,
-                                'error_message' => $errorMsg,
-                            ]);
-                        } catch (\Throwable $innerEx) {
-                            Log::error("Error processing failure at index {$index}: " . $innerEx->getMessage());
-                        }
+                        Log::error('FCM FAILURE FOUND', [
+                            'index' => $index,
+                            'token_preview' => substr($tokenValue, 0, 50),
+                            'error_code' => $errorCode,
+                            'error_message' => $errorMsg,
+                        ]);
+                    } catch (\Throwable $innerEx) {
+                        Log::error("Error in failure loop: " . $innerEx->getMessage());
                     }
-                } catch (\Throwable $ex) {
-                    Log::error("Error processing FCM failures: " . $ex->getMessage());
                 }
             }
 
@@ -215,50 +194,14 @@ class FCMService
      */
     protected function handleInvalidTokens($report): void
     {
-        $failuresArray = $report->failures()->getItems();
-
-        foreach ($failuresArray as $failure) {
-            try {
-                $error = $failure->error();
-                $target = $failure->target();
-
-                if (!$target || !method_exists($target, 'value')) {
-                    Log::warning('Invalid target in failure, skipping');
-                    continue;
-                }
-
-                $token = $target->value();
-                $errorMsg = method_exists($error, 'getMessage') ? $error->getMessage() : '';
-                $errorCode = method_exists($error, 'errorCode') ? $error->errorCode() : null;
-
-                // Check for various invalid token conditions
-                $shouldDeactivate = false;
-
-                // Check by error code
-                if ($errorCode && in_array($errorCode, ['INVALID_ARGUMENT', 'NOT_FOUND', 'UNREGISTERED'])) {
-                    $shouldDeactivate = true;
-                }
-
-                // Check by error message for "not found" type errors
-                if (stripos($errorMsg, 'not found') !== false ||
-                    stripos($errorMsg, 'unregistered') !== false ||
-                    stripos($errorMsg, 'invalid registration') !== false) {
-                    $shouldDeactivate = true;
-                }
-
-                // Deactivate invalid tokens
-                if ($shouldDeactivate && $token) {
-                    $updated = DeviceToken::where('token', $token)->update(['is_active' => false]);
-                    if ($updated > 0) {
-                        Log::info("Deactivated invalid FCM token", [
-                            'token_preview' => substr($token, 0, 50) . '...',
-                            'error_code' => $errorCode,
-                            'error_message' => $errorMsg,
-                        ]);
-                    }
-                }
-            } catch (\Throwable $e) {
-                Log::error('Error handling invalid token: ' . $e->getMessage());
+        foreach ($report->failures() as $failure) {
+            $error = $failure->error();
+            $token = $failure->target()->value();
+            
+            // Deactivate invalid tokens
+            if (in_array($error->errorCode(), ['INVALID_ARGUMENT', 'NOT_FOUND', 'UNREGISTERED']) && $token) {
+                DeviceToken::where('token', $token)->update(['is_active' => false]);
+                Log::info("Deactivated invalid FCM token: {$token}");
             }
         }
     }
@@ -305,126 +248,5 @@ class FCMService
             Log::error('FCM topic unsubscription failed: ' . $e->getMessage());
             return false;
         }
-    }
-
-    /**
-     * Send payment completed notification to booking topic
-     * Uses user-specific topic for security: user_{userId}_booking_{bookingId}_payment
-     *
-     * @param \App\Models\Booking $booking
-     * @param \App\Models\Payment $payment
-     * @return bool
-     */
-    public function sendPaymentCompleted($booking, $payment): bool
-    {
-        $userId = $booking->client_id;
-        $bookingId = $booking->id;
-        $topic = "user_{$userId}_booking_{$bookingId}_payment";
-
-        $title = 'Payment Successful';
-        $body = "Your payment of {$payment->amount} SAR has been confirmed for booking #{$bookingId}";
-
-        $data = [
-            'event' => 'payment_completed',
-            'booking_id' => (string) $bookingId,
-            'payment_id' => (string) $payment->id,
-            'amount' => (string) $payment->amount,
-            'status' => 'completed',
-            'timestamp' => now()->toIso8601String(),
-            'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
-            // Tell mobile app to dismiss the old "Pay Now" notification
-            'dismiss_notification_type' => 'booking_accepted',
-            'dismiss_booking_id' => (string) $bookingId,
-            // Additional flag for clarity
-            'action' => 'dismiss_payment_notification',
-            'refresh_notifications' => 'true',
-        ];
-
-        Log::info("Dispatching payment completed FCM job (2s delay) to topic: {$topic}", [
-            'booking_id' => $bookingId,
-            'payment_id' => $payment->id,
-            'amount' => $payment->amount,
-        ]);
-
-        // Dispatch job with 2-second delay (non-blocking, allows mobile to subscribe)
-        SendFCMTopicNotificationJob::dispatch($topic, $title, $body, $data)
-            ->delay(now()->addSeconds(2));
-
-        return true;
-    }
-
-    /**
-     * Send payment failed notification to booking topic
-     *
-     * @param \App\Models\Booking $booking
-     * @param \App\Models\Payment $payment
-     * @param string $errorMessage
-     * @return bool
-     */
-    public function sendPaymentFailed($booking, $payment, string $errorMessage = 'Payment processing failed'): bool
-    {
-        $userId = $booking->client_id;
-        $bookingId = $booking->id;
-        $topic = "user_{$userId}_booking_{$bookingId}_payment";
-
-        $title = 'Payment Failed';
-        $body = "Payment for booking #{$bookingId} could not be processed. Please try again.";
-
-        $data = [
-            'event' => 'payment_failed',
-            'booking_id' => (string) $bookingId,
-            'payment_id' => (string) $payment->id,
-            'amount' => (string) $payment->amount,
-            'status' => 'failed',
-            'error' => $errorMessage,
-            'timestamp' => now()->toIso8601String(),
-            'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
-        ];
-
-        Log::info("Dispatching payment failed FCM job (2s delay) to topic: {$topic}", [
-            'booking_id' => $bookingId,
-            'payment_id' => $payment->id,
-            'error' => $errorMessage,
-        ]);
-
-        // Dispatch job with 2-second delay (non-blocking, allows mobile to subscribe)
-        SendFCMTopicNotificationJob::dispatch($topic, $title, $body, $data)
-            ->delay(now()->addSeconds(2));
-
-        return true;
-    }
-
-    /**
-     * Send payment timeout notification to booking topic
-     *
-     * @param \App\Models\Booking $booking
-     * @param \App\Models\Payment $payment
-     * @return bool
-     */
-    public function sendPaymentTimeout($booking, $payment): bool
-    {
-        $userId = $booking->client_id;
-        $bookingId = $booking->id;
-        $topic = "user_{$userId}_booking_{$bookingId}_payment";
-
-        $title = 'Payment Timeout';
-        $body = "Payment time expired for booking #{$bookingId}. Please request a new payment link.";
-
-        $data = [
-            'event' => 'payment_timeout',
-            'booking_id' => (string) $bookingId,
-            'payment_id' => (string) $payment->id,
-            'amount' => (string) $payment->amount,
-            'status' => 'timeout',
-            'timestamp' => now()->toIso8601String(),
-            'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
-        ];
-
-        Log::info("Sending payment timeout FCM to topic: {$topic}", [
-            'booking_id' => $bookingId,
-            'payment_id' => $payment->id,
-        ]);
-
-        return $this->sendToTopic($topic, $title, $body, $data);
     }
 }

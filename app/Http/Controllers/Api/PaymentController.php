@@ -84,58 +84,6 @@ class PaymentController extends Controller
     }
 
     /**
-     * Get payment status for a booking
-     * GET /api/v1/payments/status?booking_id=X
-     */
-    public function getPaymentStatus(Request $request): JsonResponse
-    {
-        $request->validate([
-            'booking_id' => 'required|exists:bookings,id'
-        ]);
-
-        $booking = Booking::with('payment')->findOrFail($request->booking_id);
-
-        // Verify booking belongs to authenticated user
-        if ($booking->client_id !== $request->user()->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized access to booking'
-            ], 403);
-        }
-
-        // Get payment information
-        $payment = $booking->payment;
-
-        if (!$payment) {
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'booking_id' => $booking->id,
-                    'payment_status' => $booking->payment_status,
-                    'payment_method' => $booking->payment_method,
-                    'has_payment' => false,
-                ]
-            ]);
-        }
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'booking_id' => $booking->id,
-                'payment_id' => $payment->id,
-                'payment_status' => $booking->payment_status,
-                'payment_method' => $booking->payment_method,
-                'amount' => (float) $payment->amount,
-                'currency' => $payment->currency,
-                'status' => $payment->status,
-                'paid_at' => $payment->paid_at?->toIso8601String(),
-                'created_at' => $payment->created_at->toIso8601String(),
-                'has_payment' => true,
-            ]
-        ]);
-    }
-
-    /**
      * Initiate payment for booking
      */
     public function initiatePayment(Request $request): JsonResponse
@@ -292,58 +240,27 @@ class PaymentController extends Controller
         ]);
 
         // Verify webhook signature for security (MyFatoorah V2 Webhook)
-        // SECURITY WARNING: Signature validation is currently DISABLED
-        // TODO: Re-enable this after getting the correct webhook secret from MyFatoorah portal
         $webhookSecret = config('services.myfatoorah.webhook_secret');
 
-        if (false && $webhookSecret && $webhookSecret !== 'your_webhook_secret') {
-            // MyFatoorah V2 sends signature in 'myfatoorah-signature' header
-            $signature = $request->header('myfatoorah-signature')
-                      ?? $request->header('MyFatoorah-Signature')
-                      ?? $request->header('X-Webhook-Signature')
-                      ?? $request->header('Signature');
-
-            $data = $request->all();
-
-            // Build signature string according to MyFatoorah V2 spec for PAYMENT_STATUS_CHANGED
-            // Format: Invoice.Id=value,Invoice.Status=value,Transaction.Status=value,Transaction.PaymentId=value,Invoice.ExternalIdentifier=value
-            $invoiceId = $data['Data']['Invoice']['Id'] ?? '';
-            $invoiceStatus = $data['Data']['Invoice']['Status'] ?? '';
-            $transactionStatus = $data['Data']['Transaction']['Status'] ?? '';
-            $paymentId = $data['Data']['Transaction']['PaymentId'] ?? '';
-            $externalIdentifier = $data['Data']['Invoice']['ExternalIdentifier'] ?? '';
-
-            // Build the signature string
-            $signatureString = "Invoice.Id={$invoiceId},Invoice.Status={$invoiceStatus},Transaction.Status={$transactionStatus},Transaction.PaymentId={$paymentId},Invoice.ExternalIdentifier={$externalIdentifier}";
-
-            // Generate HMAC-SHA256 signature and base64 encode it
-            $expectedSignature = base64_encode(hash_hmac('sha256', $signatureString, $webhookSecret, true));
+        if ($webhookSecret && $webhookSecret !== 'your_webhook_secret') {
+            $signature = $request->header('X-Webhook-Signature') ?? $request->header('Signature');
+            $payload = $request->getContent();
+            $expectedSignature = hash_hmac('sha256', $payload, $webhookSecret);
 
             if (!hash_equals($expectedSignature, $signature ?? '')) {
                 Log::warning('Invalid webhook signature from MyFatoorah', [
                     'ip' => $request->ip(),
                     'received_signature' => $signature,
-                    'expected_signature' => $expectedSignature,
-                    'signature_string' => $signatureString,
-                    'invoice_id' => $invoiceId,
-                    'all_headers' => $request->headers->all(),
+                    'expected_signature' => substr($expectedSignature, 0, 20) . '...',
                 ]);
                 return response()->json(['success' => false, 'message' => 'Invalid signature'], 401);
             }
-
-            Log::info('Webhook signature verified successfully', [
-                'invoice_id' => $invoiceId,
-                'transaction_status' => $transactionStatus,
-            ]);
         }
-
-        Log::warning('⚠️ SECURITY WARNING: Webhook signature validation is DISABLED. This is insecure for production.');
 
         // MyFatoorah sends data in various formats depending on webhook version
         // Try to extract invoice/payment ID from different possible locations
         $data = $request->all();
-        $paymentId = $data['Data']['Invoice']['Id']  // V2 format
-                  ?? $data['Data']['InvoiceId']        // V1 format
+        $paymentId = $data['Data']['InvoiceId']
                   ?? $data['InvoiceId']
                   ?? $data['data']['InvoiceId']
                   ?? null;
@@ -357,14 +274,17 @@ class PaymentController extends Controller
 
         Log::info('Processing webhook for payment', ['payment_id' => $paymentId]);
 
-        // Process payment status update directly from webhook data (V2 format)
+        // Process payment status update
         try {
-            // Webhook V2 already contains all the data we need - no need to call API again
-            $this->processPaymentStatusV2($data);
+            $result = $this->myFatoorah->getPaymentStatus($paymentId);
 
-            Log::info('=== WEBHOOK PROCESSED SUCCESSFULLY ===', [
-                'payment_id' => $paymentId,
-            ]);
+            if ($result['success']) {
+                $this->processPaymentStatus($result['data']);
+
+                Log::info('=== WEBHOOK PROCESSED SUCCESSFULLY ===', [
+                    'payment_id' => $paymentId,
+                ]);
+            }
 
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
@@ -374,72 +294,6 @@ class PaymentController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
             return response()->json(['success' => false, 'message' => 'Processing failed'], 500);
-        }
-    }
-
-    /**
-     * Payment Callback - User returns here after payment (works for test & live)
-     * This is a BACKUP for when webhooks don't work (test environment)
-     */
-    public function paymentCallback(Request $request)
-    {
-        Log::info('=== PAYMENT CALLBACK RECEIVED ===', [
-            'query_params' => $request->all(),
-            'headers' => $request->headers->all(),
-        ]);
-
-        // MyFatoorah sends paymentId in query params
-        $paymentId = $request->query('paymentId') ?? $request->query('Id');
-
-        if (!$paymentId) {
-            Log::warning('Payment callback without paymentId');
-            return response()->json(['success' => false, 'message' => 'Missing payment ID'], 400);
-        }
-
-        try {
-            // Call MyFatoorah API to get payment status
-            Log::info('Fetching payment status from MyFatoorah', ['payment_id' => $paymentId]);
-            $result = $this->myFatoorah->getPaymentStatus($paymentId);
-
-            if ($result['success']) {
-                // Process the payment status (same logic as webhook)
-                $this->processPaymentStatus($result['data']);
-
-                Log::info('=== PAYMENT CALLBACK PROCESSED SUCCESSFULLY ===', [
-                    'payment_id' => $paymentId,
-                ]);
-
-                // Redirect to success page or return JSON for mobile app
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Payment processed successfully',
-                    'data' => [
-                        'payment_id' => $paymentId,
-                        'status' => $result['data']['Data']['InvoiceStatus'] ?? 'unknown'
-                    ]
-                ]);
-            } else {
-                Log::error('Failed to get payment status', [
-                    'payment_id' => $paymentId,
-                    'error' => $result['message'] ?? 'Unknown error'
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to verify payment status'
-                ], 500);
-            }
-        } catch (\Exception $e) {
-            Log::error('=== PAYMENT CALLBACK FAILED ===', [
-                'payment_id' => $paymentId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Payment processing failed'
-            ], 500);
         }
     }
 
@@ -462,35 +316,18 @@ class PaymentController extends Controller
 
     /**
      * Pay with wallet/balance
-     * Supports both:
-     * - POST /bookings/{id}/pay-with-wallet (booking_id in URL)
-     * - POST /payments/wallet (booking_id in body) - for backward compatibility
      */
-    public function payWithWallet(Request $request, $id = null): JsonResponse
+    public function payWithWallet(Request $request): JsonResponse
     {
         Log::info('=== WALLET PAYMENT STARTED ===');
         Log::info('Request data:', $request->all());
-        Log::info('URL param id:', ['id' => $id]);
 
-        // Get booking_id from URL parameter or request body
-        $bookingId = $id ?? $request->input('booking_id');
-
-        if (!$bookingId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Booking ID is required'
-            ], 400);
-        }
+        $request->validate([
+            'booking_id' => 'required|exists:bookings,id',
+        ]);
 
         $user = $request->user();
-        $booking = Booking::with(['client', 'provider'])->find($bookingId);
-
-        if (!$booking) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Booking not found'
-            ], 404);
-        }
+        $booking = Booking::with(['client', 'provider'])->findOrFail($request->booking_id);
 
         Log::info('Booking details:', [
             'id' => $booking->id,
@@ -518,7 +355,7 @@ class PaymentController extends Controller
         if ($booking->payment_status !== 'pending') {
             return response()->json([
                 'success' => false,
-                'message' => 'Booking has already been paid'
+                'message' => 'Payment already processed for this booking.'
             ], 400);
         }
 
@@ -526,40 +363,16 @@ class PaymentController extends Controller
         // Note: Add wallet_balance column to users table if not exists
         $userBalance = $user->wallet_balance ?? 0;
         if ($userBalance < $booking->total_amount) {
-            $shortfall = $booking->total_amount - $userBalance;
             return response()->json([
                 'success' => false,
-                'message' => 'Insufficient wallet balance',
-                'data' => [
-                    'required_amount' => (float) $booking->total_amount,
-                    'current_balance' => (float) $userBalance,
-                    'shortfall' => (float) $shortfall,
-                ]
+                'message' => 'Insufficient wallet balance.',
+                'current_balance' => $userBalance,
+                'required_amount' => $booking->total_amount
             ], 400);
         }
 
         DB::beginTransaction();
         try {
-            $balanceBefore = $userBalance;
-            $balanceAfter = $userBalance - $booking->total_amount;
-
-            // Create wallet transaction record
-            $walletTransaction = \App\Models\WalletTransaction::create([
-                'user_id' => $user->id,
-                'type' => 'payment',
-                'amount' => $booking->total_amount,
-                'description' => "Payment for booking #{$booking->id}",
-                'reference_number' => 'BOOK-' . $booking->id,
-                'related_id' => $booking->id,
-                'related_type' => 'booking',
-                'balance_before' => $balanceBefore,
-                'balance_after' => $balanceAfter,
-                'metadata' => [
-                    'booking_id' => $booking->id,
-                    'provider_id' => $booking->provider_id,
-                ],
-            ]);
-
             // Deduct from wallet
             $user->decrement('wallet_balance', $booking->total_amount);
 
@@ -574,9 +387,8 @@ class PaymentController extends Controller
                 'status' => 'completed',
                 'gateway_response' => [
                     'payment_method' => 'wallet',
-                    'balance_before' => $balanceBefore,
-                    'balance_after' => $balanceAfter,
-                    'transaction_id' => $walletTransaction->id,
+                    'balance_before' => $userBalance,
+                    'balance_after' => $userBalance - $booking->total_amount,
                 ],
                 'paid_at' => now(),
             ]);
@@ -588,16 +400,16 @@ class PaymentController extends Controller
                 'payment_reference' => $payment->payment_id,
             ]);
 
-            // Delete payment request notification completely so it disappears from notification list
-            $deletedCount = \App\Models\Notification::where('user_id', $booking->client_id)
+            // Mark payment request notification as read so it disappears from notification list
+            \App\Models\Notification::where('user_id', $booking->client_id)
                 ->where('type', 'booking_accepted')
                 ->where('data->booking_id', $booking->id)
-                ->delete();
+                ->where('is_read', false)
+                ->update(['is_read' => true]);
 
-            Log::info('Payment notification deleted', [
+            Log::info('Payment notification marked as read', [
                 'booking_id' => $booking->id,
                 'client_id' => $booking->client_id,
-                'deleted_count' => $deletedCount,
             ]);
 
             DB::commit();
@@ -610,12 +422,12 @@ class PaymentController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Booking paid successfully with wallet',
+                'message' => 'Payment completed successfully',
                 'data' => [
                     'booking_id' => $booking->id,
-                    'transaction_id' => $walletTransaction->id,
-                    'amount_paid' => (float) $booking->total_amount,
-                    'new_balance' => (float) ($userBalance - $booking->total_amount),
+                    'payment_id' => $payment->id,
+                    'amount_paid' => $booking->total_amount,
+                    'new_balance' => $userBalance - $booking->total_amount,
                     'payment_status' => 'paid',
                 ]
             ]);
@@ -638,166 +450,7 @@ class PaymentController extends Controller
     }
 
     /**
-     * Helper: Process payment status from Webhook V2
-     */
-    protected function processPaymentStatusV2(array $webhookData)
-    {
-        $invoiceData = $webhookData['Data']['Invoice'] ?? [];
-        $transactionData = $webhookData['Data']['Transaction'] ?? [];
-
-        $paymentId = $invoiceData['Id'] ?? null;
-        $invoiceStatus = $invoiceData['Status'] ?? null; // PAID or PENDING
-        $transactionStatus = $transactionData['Status'] ?? null; // SUCCESS, FAILED, etc.
-
-        if (!$paymentId) {
-            Log::warning('Webhook V2 missing payment ID');
-            return;
-        }
-
-        $payment = Payment::where('payment_id', $paymentId)->first();
-
-        if (!$payment) {
-            Log::warning('Payment record not found for webhook processing', [
-                'payment_id' => $paymentId,
-            ]);
-            return;
-        }
-
-        DB::transaction(function () use ($payment, $invoiceData, $transactionData, $webhookData, $invoiceStatus, $transactionStatus) {
-            if ($invoiceStatus === 'PAID' && $transactionStatus === 'SUCCESS') {
-                Log::info('Processing successful payment from webhook V2', [
-                    'payment_id' => $invoiceData['Id'],
-                    'booking_id' => $payment->booking_id,
-                    'invoice_status' => $invoiceStatus,
-                    'transaction_status' => $transactionStatus,
-                ]);
-
-                $payment->update([
-                    'status' => 'completed',
-                    'gateway_response' => $webhookData,
-                    'paid_at' => now(),
-                ]);
-
-                $payment->booking->update([
-                    'payment_status' => 'paid',
-                    'payment_method' => $transactionData['PaymentMethod'] ?? 'myfatoorah',
-                ]);
-
-                // Delete payment request notification completely so it stops showing "Pay Now"
-                $deletedCount = \App\Models\Notification::where('user_id', $payment->booking->client_id)
-                    ->where('type', 'booking_accepted')
-                    ->where('data->booking_id', $payment->booking_id)
-                    ->delete();
-
-                Log::info('Deleted booking_accepted notification', [
-                    'client_id' => $payment->booking->client_id,
-                    'booking_id' => $payment->booking_id,
-                    'deleted_count' => $deletedCount,
-                ]);
-
-                // Send payment completed notification to dashboard users (admin notifications)
-                $this->sendPaymentCompletedNotification($payment->booking);
-
-                // Send FCM push notification to mobile app (includes dismissal of old notification)
-                try {
-                    $fcmService = app(\App\Services\FCMService::class);
-                    $fcmService->sendPaymentCompleted($payment->booking, $payment);
-                    Log::info('FCM payment completed notification sent (V2 webhook)', [
-                        'booking_id' => $payment->booking_id,
-                        'payment_id' => $payment->id,
-                    ]);
-                } catch (\Exception $fcmException) {
-                    Log::error('Failed to send FCM payment completed notification', [
-                        'error' => $fcmException->getMessage(),
-                        'booking_id' => $payment->booking_id,
-                    ]);
-                }
-
-                Log::info('=== PAYMENT COMPLETED SUCCESSFULLY ===', [
-                    'payment_id' => $invoiceData['Id'],
-                    'booking_id' => $payment->booking_id,
-                    'notification_deleted' => true,
-                ]);
-            } else {
-                // Handle failed or pending payment
-                Log::warning('Processing non-successful payment from webhook V2', [
-                    'payment_id' => $invoiceData['Id'],
-                    'invoice_status' => $invoiceStatus,
-                    'transaction_status' => $transactionStatus,
-                    'error' => $transactionData['Error'] ?? null,
-                ]);
-
-                if ($transactionStatus === 'FAILED') {
-                    $failureReason = $transactionData['Error']['Message'] ?? 'Payment failed';
-
-                    $payment->update([
-                        'status' => 'failed',
-                        'failure_reason' => $failureReason,
-                        'gateway_response' => $webhookData,
-                    ]);
-
-                    $payment->booking->update([
-                        'payment_status' => 'failed',
-                    ]);
-
-                    // Send FCM push notification for payment failure
-                    try {
-                        $fcmService = app(\App\Services\FCMService::class);
-                        $fcmService->sendPaymentFailed($payment->booking, $payment, $failureReason);
-                        Log::info('FCM payment failed notification sent', [
-                            'booking_id' => $payment->booking_id,
-                            'payment_id' => $payment->id,
-                        ]);
-                    } catch (\Exception $fcmException) {
-                        Log::error('Failed to send FCM payment failed notification', [
-                            'error' => $fcmException->getMessage(),
-                            'booking_id' => $payment->booking_id,
-                        ]);
-                    }
-                }
-            }
-        });
-    }
-
-    /**
-     * Send notification to dashboard users about payment completion
-     */
-    protected function sendPaymentCompletedNotification($booking)
-    {
-        try {
-            // Get all users with dashboard access (super_admin, admin, manager)
-            $dashboardUsers = \App\Models\User::whereHas('roles', function ($query) {
-                $query->whereIn('name', ['super_admin', 'admin', 'manager']);
-            })->get();
-
-            foreach ($dashboardUsers as $user) {
-                \App\Models\Notification::create([
-                    'user_id' => $user->id,
-                    'type' => 'payment_completed',
-                    'title' => 'Payment Completed',
-                    'body' => "Payment received for booking #{$booking->id}. Amount: {$booking->total_amount} SAR",
-                    'data' => [
-                        'booking_id' => $booking->id,
-                        'amount' => $booking->total_amount,
-                        'client_id' => $booking->client_id,
-                    ],
-                    'is_read' => false,
-                ]);
-            }
-
-            Log::info('Payment completed notifications sent to dashboard users', [
-                'booking_id' => $booking->id,
-                'users_notified' => $dashboardUsers->count(),
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Failed to send payment completed notifications', [
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
-
-    /**
-     * Helper: Process payment status (legacy - for GetPaymentStatus API response)
+     * Helper: Process payment status
      */
     protected function processPaymentStatus(array $data)
     {
@@ -832,54 +485,29 @@ class PaymentController extends Controller
                     'payment_method' => $paymentData['PaymentGateway'] ?? 'myfatoorah',
                 ]);
 
-                // Delete payment request notification completely so it stops showing "Pay Now"
-                $deletedCount = \App\Models\Notification::where('user_id', $payment->booking->client_id)
+                // Mark payment request notification as read so it disappears
+                \App\Models\Notification::where('user_id', $payment->booking->client_id)
                     ->where('type', 'booking_accepted')
                     ->where('data->booking_id', $payment->booking_id)
-                    ->delete();
-
-                Log::info('Deleted booking_accepted notification', [
-                    'client_id' => $payment->booking->client_id,
-                    'booking_id' => $payment->booking_id,
-                    'deleted_count' => $deletedCount,
-                ]);
-
-                // Send payment completed notification to dashboard users (admin notifications)
-                $this->sendPaymentCompletedNotification($payment->booking);
-
-                // Send FCM push notification to mobile app (includes dismissal of old notification)
-                try {
-                    $fcmService = app(\App\Services\FCMService::class);
-                    $fcmService->sendPaymentCompleted($payment->booking, $payment);
-                    Log::info('FCM payment completed notification sent (callback)', [
-                        'booking_id' => $payment->booking_id,
-                        'payment_id' => $payment->id,
-                    ]);
-                } catch (\Exception $fcmException) {
-                    Log::error('Failed to send FCM payment completed notification', [
-                        'error' => $fcmException->getMessage(),
-                        'booking_id' => $payment->booking_id,
-                    ]);
-                }
+                    ->where('is_read', false)
+                    ->update(['is_read' => true]);
 
                 Log::info('=== PAYMENT COMPLETED SUCCESSFULLY ===', [
                     'payment_id' => $paymentData['InvoiceId'],
                     'booking_id' => $payment->booking_id,
-                    'notification_deleted' => true,
+                    'notification_marked_read' => true,
                 ]);
             } else {
                 // Handle failed payment
-                $failureReason = $paymentData['InvoiceError'] ?? 'Payment failed';
-
                 Log::warning('Processing failed payment from webhook', [
                     'payment_id' => $paymentData['InvoiceId'],
                     'invoice_status' => $invoiceStatus,
-                    'invoice_error' => $failureReason,
+                    'invoice_error' => $paymentData['InvoiceError'] ?? 'No error message',
                 ]);
 
                 $payment->update([
                     'status' => 'failed',
-                    'failure_reason' => $failureReason,
+                    'failure_reason' => $paymentData['InvoiceError'] ?? 'Payment failed',
                     'gateway_response' => $data,
                 ]);
 
@@ -887,159 +515,11 @@ class PaymentController extends Controller
                     'payment_status' => 'failed',
                 ]);
 
-                // Send FCM push notification for payment failure
-                try {
-                    $fcmService = app(\App\Services\FCMService::class);
-                    $fcmService->sendPaymentFailed($payment->booking, $payment, $failureReason);
-                    Log::info('FCM payment failed notification sent', [
-                        'booking_id' => $payment->booking_id,
-                        'payment_id' => $payment->id,
-                    ]);
-                } catch (\Exception $fcmException) {
-                    Log::error('Failed to send FCM payment failed notification', [
-                        'error' => $fcmException->getMessage(),
-                        'booking_id' => $payment->booking_id,
-                    ]);
-                }
-
                 Log::info('=== PAYMENT FAILED ===', [
                     'payment_id' => $paymentData['InvoiceId'],
-                    'reason' => $failureReason,
+                    'reason' => $paymentData['InvoiceError'] ?? 'Unknown',
                 ]);
             }
         });
-    }
-
-    /**
-     * Test FCM Payment Completed Notification
-     * POST /api/v1/admin/test/fcm/payment-completed
-     * Body: { "booking_id": 1 }
-     */
-    public function testFCMPaymentCompleted(Request $request)
-    {
-        $request->validate([
-            'booking_id' => 'required|exists:bookings,id',
-        ]);
-
-        $booking = \App\Models\Booking::with('payment')->findOrFail($request->booking_id);
-
-        if (!$booking->payment) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No payment found for this booking',
-            ], 404);
-        }
-
-        try {
-            $fcmService = app(\App\Services\FCMService::class);
-            $result = $fcmService->sendPaymentCompleted($booking, $booking->payment);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'FCM payment completed notification sent',
-                'data' => [
-                    'booking_id' => $booking->id,
-                    'payment_id' => $booking->payment->id,
-                    'topic' => "user_{$booking->client_id}_booking_{$booking->id}_payment",
-                    'fcm_result' => $result,
-                ],
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to send FCM notification',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
-     * Test FCM Payment Failed Notification
-     * POST /api/v1/admin/test/fcm/payment-failed
-     * Body: { "booking_id": 1, "error_message": "Card declined" }
-     */
-    public function testFCMPaymentFailed(Request $request)
-    {
-        $request->validate([
-            'booking_id' => 'required|exists:bookings,id',
-            'error_message' => 'nullable|string',
-        ]);
-
-        $booking = \App\Models\Booking::with('payment')->findOrFail($request->booking_id);
-
-        if (!$booking->payment) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No payment found for this booking',
-            ], 404);
-        }
-
-        $errorMessage = $request->error_message ?? 'Test payment failure';
-
-        try {
-            $fcmService = app(\App\Services\FCMService::class);
-            $result = $fcmService->sendPaymentFailed($booking, $booking->payment, $errorMessage);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'FCM payment failed notification sent',
-                'data' => [
-                    'booking_id' => $booking->id,
-                    'payment_id' => $booking->payment->id,
-                    'topic' => "user_{$booking->client_id}_booking_{$booking->id}_payment",
-                    'error_message' => $errorMessage,
-                    'fcm_result' => $result,
-                ],
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to send FCM notification',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
-     * Test FCM Payment Timeout Notification
-     * POST /api/v1/admin/test/fcm/payment-timeout
-     * Body: { "booking_id": 1 }
-     */
-    public function testFCMPaymentTimeout(Request $request)
-    {
-        $request->validate([
-            'booking_id' => 'required|exists:bookings,id',
-        ]);
-
-        $booking = \App\Models\Booking::with('payment')->findOrFail($request->booking_id);
-
-        if (!$booking->payment) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No payment found for this booking',
-            ], 404);
-        }
-
-        try {
-            $fcmService = app(\App\Services\FCMService::class);
-            $result = $fcmService->sendPaymentTimeout($booking, $booking->payment);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'FCM payment timeout notification sent',
-                'data' => [
-                    'booking_id' => $booking->id,
-                    'payment_id' => $booking->payment->id,
-                    'topic' => "user_{$booking->client_id}_booking_{$booking->id}_payment",
-                    'fcm_result' => $result,
-                ],
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to send FCM notification',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
     }
 }

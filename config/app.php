@@ -65,7 +65,7 @@ return [
     |
     */
 
-    'timezone' => 'Asia/Riyadh',
+    'timezone' => 'UTC',
 
     /*
     |--------------------------------------------------------------------------
@@ -134,6 +134,6 @@ return [
     |
     */
 
-    'payment_timeout_minutes' => (int) env('PAYMENT_TIMEOUT_MINUTES', 5),
+    'payment_timeout_minutes' => env('PAYMENT_TIMEOUT_MINUTES', 5),
 
 ];
